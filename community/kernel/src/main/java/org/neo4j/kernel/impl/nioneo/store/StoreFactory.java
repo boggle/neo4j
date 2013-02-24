@@ -153,6 +153,19 @@ public class StoreFactory
                 fileSystemAbstraction, stringLogger );
     }
     
+    public LabelStore newLabelStore( File file )
+    {
+        return new LabelStore( file, config, IdType.NODE_LABELS, idGeneratorFactory, windowPoolFactory,
+                fileSystemAbstraction, stringLogger );
+    }
+
+    private SchemaStore newOrCreateSchemaStore( File file )
+    {
+        if ( !fileSystemAbstraction.fileExists( file ) )
+            createSchemaStore( file );
+        return newSchemaStore( file );
+    }
+    
     private DynamicStringStore newDynamicStringStore(File fileName, IdType nameIdType)
     {
         return new DynamicStringStore( fileName, config, nameIdType, idGeneratorFactory, windowPoolFactory,
@@ -345,6 +358,11 @@ public class StoreFactory
     public void createSchemaStore( File fileName )
     {
         createEmptyDynamicStore( fileName, SchemaStore.BLOCK_SIZE, SchemaStore.VERSION, IdType.SCHEMA );
+    }
+
+    public void createLabelStore( File fileName )
+    {
+        createEmptyDynamicStore( fileName, SkipListIndexStore.BLOCK_SIZE, LabelStore.VERSION, IdType.NODE_LABELS );
     }
 
     /**
