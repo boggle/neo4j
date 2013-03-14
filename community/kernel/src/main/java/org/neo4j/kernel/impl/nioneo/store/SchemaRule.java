@@ -23,6 +23,8 @@ import static org.neo4j.helpers.Exceptions.launderedException;
 
 import java.nio.ByteBuffer;
 
+import org.neo4j.kernel.impl.api.index.LabelRule;
+
 public interface SchemaRule extends RecordSerializable
 {
     /**
@@ -45,12 +47,22 @@ public interface SchemaRule extends RecordSerializable
         INDEX_RULE( 1, IndexRule.class )
         {
             @Override
-            protected SchemaRule newRule( long id, long labelId, ByteBuffer buffer )
+            protected IndexRule newRule( long id, long labelId, ByteBuffer buffer )
             {
                 return new IndexRule( id, labelId, buffer );
             }
+        },
+
+        LABEL_RULE( 2, LabelRule.class)
+        {
+            @Override
+            protected LabelRule newRule( long id, long labelId, ByteBuffer buffer )
+            {
+                return new LabelRule( id, labelId, buffer );
+            }
+
         };
-        
+
         private final byte id;
         private final Class<? extends SchemaRule> ruleClass;
 

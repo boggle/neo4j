@@ -40,13 +40,14 @@ import org.junit.Test;
 import org.neo4j.kernel.DefaultIdGeneratorFactory;
 import org.neo4j.kernel.DefaultTxHook;
 import org.neo4j.kernel.configuration.Config;
+import org.neo4j.kernel.impl.api.index.LabelRule;
 import org.neo4j.kernel.impl.nioneo.store.SchemaRule.Kind;
 import org.neo4j.test.EphemeralFileSystemRule;
 
 public class SchemaStoreTest
 {
     @Test
-    public void serializationAndDeserialization() throws Exception
+    public void serializationAndDeserializationOfIndexRules() throws Exception
     {
         // GIVEN
         long propertyKey = 4;
@@ -76,6 +77,39 @@ public class SchemaStoreTest
         assertTrue( Arrays.equals( expected.array(), readRecords.iterator().next().getData() ) );
     }
     
+    @Test
+    public void serializationAndDeserializationOfLabelRules() throws Exception
+    {
+        // GIVEN
+        int labelId = 0;
+        ByteBuffer expected = wrap( new byte[4+1+4+8*3] );
+        expected.putInt( labelId );
+        expected.put( Kind.LABEL_RULE.id() );
+        expected.putInt( 3 );
+        expected.putLong( 42l );
+        expected.putLong( 92l );
+        expected.putLong( 108l );
+
+        SchemaRule labelRule = new LabelRule( store.nextId(), labelId, new long[] { 42l, 92l, 108l } );
+
+        // WHEN
+        Collection<DynamicRecord> records = store.allocateFrom( labelRule );
+        long blockId = first( records ).getId();
+        for ( DynamicRecord record : records )
+            store.updateRecord( record );
+
+        // THEN
+        byte[] actual = records.iterator().next().getData();
+
+        assertEquals( 1, records.size() );
+        assertTrue( "\nExpected: " + hex( expected ) + "\n     Got: " + hex( actual ),
+                Arrays.equals( expected.array(), actual ) );
+
+        Collection<DynamicRecord> readRecords = store.getRecords( blockId );
+        assertEquals( 1, readRecords.size() );
+        assertTrue( Arrays.equals( expected.array(), readRecords.iterator().next().getData() ) );
+    }
+
     @Test
     public void storeAndLoadAllShortRules() throws Exception
     {

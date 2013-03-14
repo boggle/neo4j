@@ -19,31 +19,25 @@
  */
 package org.neo4j.kernel.impl.api.index;
 
-import org.neo4j.kernel.impl.nioneo.store.IndexRule;
-
-/**
- * Description of a single index as needed by the {@link IndexProxy} cake
- *
- * This is a IndexContext cake level representation of {@link IndexRule}
- */
-public class IndexDescriptor extends AbstractDescriptor
+public abstract class AbstractDescriptor
 {
-    private final long propertyKeyId;
+    private final long labelId;
 
-    public IndexDescriptor( long labelId, long propertyKeyId )
+    public AbstractDescriptor( long labelId )
     {
-        super( labelId );
-        this.propertyKeyId = propertyKeyId;
+        this.labelId = labelId;
     }
 
-    public long getPropertyKeyId()
+    public long getLabelId()
     {
-        return propertyKeyId;
+        return labelId;
     }
 
     @Override
-    public String innerToString()
+    public String toString()
     {
-        return ", on:" + propertyKeyId;
+        return getClass().getName() + "[label:" + labelId + innerToString() + "]";
     }
+
+    protected abstract String innerToString();
 }

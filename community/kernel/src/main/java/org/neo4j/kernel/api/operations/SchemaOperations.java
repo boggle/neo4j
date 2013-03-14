@@ -24,6 +24,7 @@ import org.neo4j.kernel.api.SchemaRuleNotFoundException;
 import org.neo4j.kernel.api.index.IndexNotFoundKernelException;
 import org.neo4j.kernel.api.index.InternalIndexState;
 import org.neo4j.kernel.impl.api.index.IndexDescriptor;
+import org.neo4j.kernel.impl.api.index.LabelRule;
 import org.neo4j.kernel.impl.nioneo.store.IndexRule;
 
 public interface SchemaOperations
@@ -65,4 +66,16 @@ public interface SchemaOperations
      */
     void dropIndexRule( IndexRule indexRule ) throws ConstraintViolationKernelException;
 
+
+//    CYPHER: ADD/REMOVE :label IMPLIES :other:Labels
+//
+//    void addLabelImplications( long labelId, long[] impliedLabelIds ) throws ConstraintViolationKernelException;
+//
+//    void removeLabelImplications( long labelId, long[] impliedLabelIds ) throws ConstraintViolationKernelException;
+//
+//    void removeAllLabelImplications( long labelId ) throws ConstraintViolationKernelException;
+//
+//    long[] getDirectLabelImplications( long[] labelIds ) throws ConstraintViolationKernelException;
+//
+//    long[] getTransitiveLabelImplications( long[] labelIds ) throws ConstraintViolationKernelException;
 }
