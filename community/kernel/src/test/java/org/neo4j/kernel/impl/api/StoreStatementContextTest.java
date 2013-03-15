@@ -31,6 +31,8 @@ import static org.mockito.Mockito.*;
 import static org.neo4j.graphdb.DynamicLabel.label;
 import static org.neo4j.graphdb.factory.GraphDatabaseSettings.cache_type;
 import static org.neo4j.helpers.collection.IteratorUtil.addToCollection;
+import static org.neo4j.helpers.collection.IteratorUtil.asIterable;
+import static org.neo4j.helpers.collection.IteratorUtil.asIterator;
 import static org.neo4j.helpers.collection.IteratorUtil.asSet;
 import static org.neo4j.helpers.collection.IteratorUtil.asUniqueSet;
 import static org.neo4j.helpers.collection.MapUtil.map;
@@ -42,6 +44,7 @@ import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.graphdb.DynamicLabel;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
@@ -394,9 +397,74 @@ public class StoreStatementContextTest
         // THEN
         assertEquals( asSet( mrTaylor.getId() ), foundNodes );
     }
-    
+
+    @Test
+    public void should_create_label_implications() throws Exception
+    {
+        // GIVEN
+        long labelId = -1;
+        long impliedLabelId = -1;
+        Transaction tx = db.beginTx();
+        try {
+            labelId = statement.getOrCreateLabelId( "myLabel" );
+            impliedLabelId = statement.getOrCreateLabelId( "myAbstraction" );
+            tx.success();
+        }
+        finally {
+            tx.finish();
+        }
+
+        // WHEN
+        tx = db.beginTx();
+        try {
+            statement.addLabelImplications( labelId, asSet( impliedLabelId ) );
+            tx.success();
+        }
+        finally {
+            tx.finish();
+        }
+
+        // THEN
+        assertEquals( asSet( impliedLabelId ), statement.getDirectLabelImplications( asIterator( labelId ) ) );
+    }
+
+
+    @Test
+    public void should_add_label_implications() throws Exception
+    {
+        // GIVEN
+        long labelId = -1;
+        long impliedLabelId1 = -1;
+        long impliedLabelId2 = -1;
+        Transaction tx = db.beginTx();
+        try {
+            labelId = statement.getOrCreateLabelId( "myLabel" );
+            impliedLabelId1 = statement.getOrCreateLabelId( "myAbstraction" );
+            impliedLabelId2 = statement.getOrCreateLabelId( "myAbstraction" );
+            statement.addLabelImplications( labelId, asSet( impliedLabelId1 ) );
+            tx.success();
+        }
+        finally {
+            tx.finish();
+        }
+
+        // WHEN
+        tx = db.beginTx();
+        try {
+            statement.addLabelImplications( labelId, asSet( impliedLabelId2 ) );
+            tx.success();
+        }
+        finally {
+            tx.finish();
+        }
+
+        // THEN
+        assertEquals( asSet( impliedLabelId1, impliedLabelId2 ),
+                statement.getDirectLabelImplications( asIterator( labelId ) ) );
+    }
+
     private GraphDatabaseAPI db;
-    private StatementContext statement;
+    private StoreStatementContext statement;
     private final Label label = label( "first-label" ), label2 = label( "second-label" );
     private final String propertyKey = "name";
 

@@ -21,15 +21,16 @@ package org.neo4j.kernel.impl.api.index;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.neo4j.kernel.impl.nioneo.store.AbstractSchemaRule;
 
 public class LabelRule extends AbstractSchemaRule
 {
-    private final long[] impliedLabelIds;
+    private final Set<Long> impliedLabelIds;
 
-    public LabelRule( long id, long label, long[] impliedLabelIds )
+    public LabelRule( long id, long label, Set<Long> impliedLabelIds )
     {
         super( id, label, Kind.LABEL_RULE );
         if (impliedLabelIds == null)
@@ -42,16 +43,17 @@ public class LabelRule extends AbstractSchemaRule
     {
         super( id, labelId, Kind.LABEL_RULE );
 
-        impliedLabelIds = new long[ buffer.getInt() ];
-        for (int i = 0; i < impliedLabelIds.length; i++)
-            impliedLabelIds[i] = buffer.getLong();
+        int numImpliedLabelIds = buffer.getInt();
+        impliedLabelIds = new HashSet<Long>();
+        for (int i = 0; i < numImpliedLabelIds; i++)
+            impliedLabelIds.add( buffer.getLong() );
     }
 
     @Override
     public void serialize( ByteBuffer target )
     {
         super.serialize( target );
-        target.putInt( impliedLabelIds.length );
+        target.putInt( impliedLabelIds.size() );
         for (long impliedLabelId : impliedLabelIds)
             target.putLong( impliedLabelId );
     }
@@ -60,16 +62,16 @@ public class LabelRule extends AbstractSchemaRule
     @Override
     public int length()
     {
-        return super.length() + 4 + 8 * impliedLabelIds.length;
+        return super.length() + 4 + 8 * impliedLabelIds.size();
     }
 
-    public void addToLabelIdSet( Set<Long> set )
+    public void addImpliedToLabelIdSet( Set<Long> set )
     {
         for (long impliedId : impliedLabelIds)
             set.add( impliedId );
     }
 
-    public void removeFromLabelIdSet( Set<Long> set )
+    public void removeImpliedFromLabelIdSet( Set<Long> set )
     {
         for (long impliedId : impliedLabelIds)
             set.remove( impliedId );
@@ -78,6 +80,6 @@ public class LabelRule extends AbstractSchemaRule
     @Override
     public String innerToString()
     {
-        return ", implies: " + Arrays.toString( impliedLabelIds );
+        return ", implies: " + Arrays.toString( impliedLabelIds.toArray() );
     }
 }

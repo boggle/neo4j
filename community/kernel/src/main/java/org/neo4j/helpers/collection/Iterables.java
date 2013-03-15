@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import org.neo4j.helpers.Converter;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.Predicate;
 
@@ -232,6 +233,16 @@ public final class Iterables
         return new FilterIterable.FilterIterator<X>( i, specification );
     }
     
+    public static <X, R> Iterable<R> filterAs( Converter<? super X, R> specification, Iterable<X> i )
+    {
+        return map( specification, filter( specification, i ) );
+    }
+
+    public static <X, R> Iterator<R> filterAs( Converter<? super X, R> specification, Iterator<X> i )
+    {
+        return map( specification, filter( specification, i) );
+    }
+
     public static <X> X first( Iterable<? extends X> i )
     {
         Iterator<? extends X> iter = i.iterator();
@@ -678,6 +689,7 @@ public final class Iterables
             }
         }
     }
+
 
     private static class FilterIterable<T>
             implements Iterable<T>

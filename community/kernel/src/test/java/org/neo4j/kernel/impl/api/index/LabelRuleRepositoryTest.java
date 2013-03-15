@@ -21,6 +21,7 @@ package org.neo4j.kernel.impl.api.index;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.neo4j.helpers.collection.IteratorUtil.asIterator;
 import static org.neo4j.helpers.collection.IteratorUtil.asSet;
 
 import org.junit.Test;
@@ -33,10 +34,10 @@ public class LabelRuleRepositoryTest
         LabelRuleRepository repo = new LabelRuleRepository();
 
         // When
-        repo.add( new LabelRule( 1, 10, new long[] { 100l } ) );
+        repo.add( new LabelRule( 1, 10, asSet(  100l ) ) );
 
         // Then
-        assertThat( repo.getDirectlyImpliedLabels( new long[] { 10l } ), equalTo(asSet( 100l )));
+        assertThat( repo.getDirectlyImpliedLabels( asIterator( 10l ) ), equalTo(asSet( 100l )));
 
     }
 
@@ -46,13 +47,13 @@ public class LabelRuleRepositoryTest
         LabelRuleRepository repo = new LabelRuleRepository();
 
         // When
-        repo.add( new LabelRule( 1, 10, new long[] { 100l } ) );
-        repo.add( new LabelRule( 1, 100, new long[] { 200l } ) );
-        repo.add( new LabelRule( 1, 200, new long[] { 300l, 400l } ) );
+        repo.add( new LabelRule( 1, 10, asSet( 100l ) ) );
+        repo.add( new LabelRule( 1, 100, asSet( 200l ) ) );
+        repo.add( new LabelRule( 1, 200, asSet(  300l, 400l ) ) );
 
         // Then
         assertThat(
-                repo.getTransitivelyImpliedLabels( new long[] { 10l } ),
+                repo.getTransitivelyImpliedLabels( asIterator( 10l ) ),
                 equalTo( asSet( 100l, 200l, 300l, 400l ) ) );
 
     }

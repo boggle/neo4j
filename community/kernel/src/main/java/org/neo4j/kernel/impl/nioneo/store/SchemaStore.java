@@ -27,6 +27,9 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Iterator;
 
+import org.neo4j.helpers.Converter;
+import org.neo4j.helpers.Predicate;
+import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.helpers.collection.PrefetchingIterator;
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
@@ -98,7 +101,12 @@ public class SchemaStore extends AbstractDynamicStore
             }
         };
     }
-    
+
+    public <K extends SchemaRule> Iterable<K> loadRules(Converter<SchemaRule, K> converter)
+    {
+        return Iterables.filterAs( converter, loadAll() );
+    }
+
     private byte[] newRecordBuffer()
     {
         return new byte[getRecordSize()*4];

@@ -19,46 +19,60 @@
  */
 package org.neo4j.kernel.impl.api.index;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.neo4j.helpers.Pair;
+
 public class LabelRuleRepository
 {
-    private final Map<Long, Set<Long>> impliedLabels = new HashMap<Long, Set<Long>>();
+    private final Map<Long, LabelRule> impliedLabels = new HashMap<Long, LabelRule>();
 
     public void add( LabelRule rule )
     {
-        if(!impliedLabels.containsKey( rule.getLabel() ))
+        if( hasLabelId( rule.getLabel() ) )
         {
-            impliedLabels.put( rule.getLabel(), new HashSet<Long>() );
+            impliedLabels.put( rule.getLabel(), rule );
         }
+        else
+            throw new IllegalStateException( "Duplicate label rule: " + rule.toString() );
+    }
 
-        rule.addToLabelIdSet( impliedLabels.get( rule.getLabel() ) );
+    public boolean hasLabelId( long labelId )
+    {
+        return impliedLabels.containsKey( labelId );
+    }
+
+
+    public void update( LabelRule rule )
+    {
+        impliedLabels.put( rule.getLabel(), rule );
     }
 
     public void remove( LabelRule rule )
     {
-        if(impliedLabels.containsKey( rule.getLabel() ))
+        if( hasLabelId( rule.getLabel() ) )
         {
-            rule.removeFromLabelIdSet( impliedLabels.get( rule.getLabel() ) );
+            impliedLabels.get( rule.getLabel() );
         }
     }
-    public Set<Long> getDirectlyImpliedLabels( long[] labelIds )
+
+    public Set<Long> getDirectlyImpliedLabels( Iterator<Long> labelIds )
     {
         Set<Long> result = new HashSet<Long>();
-        for (long labelId : labelIds)
+        while(labelIds.hasNext())
         {
-            Set<Long> longSet = impliedLabels.get( labelId );
-            if (longSet != null)
-                result.addAll( longSet );
+            LabelRule rule = impliedLabels.get( labelIds.next() );
+            if (rule != null)
+                rule.addImpliedToLabelIdSet( result );
         }
         return result;
     }
 
-    public Set<Long> getTransitivelyImpliedLabels( long[] labelIds )
+    public Set<Long> getTransitivelyImpliedLabels( Iterator<Long> labelIds )
     {
         Set<Long> frontier = getDirectlyImpliedLabels( labelIds );
         Set<Long> seen = new HashSet<Long>();
@@ -67,9 +81,9 @@ public class LabelRuleRepository
             Set<Long> nextFrontier = new HashSet<Long>();
             for (long impliedId : frontier)
             {
-                Set<Long> addToNextFrontier = impliedLabels.get( impliedId );
-                if ( addToNextFrontier != null )
-                    nextFrontier.addAll( addToNextFrontier );
+                LabelRule impliedExtension = impliedLabels.get( impliedId );
+                if ( impliedExtension != null )
+                    impliedExtension.addImpliedToLabelIdSet( nextFrontier );
             }
             seen.addAll( frontier );
             frontier = nextFrontier;

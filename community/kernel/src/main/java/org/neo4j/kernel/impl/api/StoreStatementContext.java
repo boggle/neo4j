@@ -23,10 +23,13 @@ import static org.neo4j.helpers.collection.Iterables.filter;
 import static org.neo4j.helpers.collection.Iterables.map;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.TransactionFailureException;
+import org.neo4j.helpers.Converter;
 import org.neo4j.helpers.Function;
 import org.neo4j.helpers.Predicate;
 import org.neo4j.helpers.collection.PrefetchingIterator;
@@ -40,10 +43,12 @@ import org.neo4j.kernel.api.SchemaRuleNotFoundException;
 import org.neo4j.kernel.api.StatementContext;
 import org.neo4j.kernel.api.index.IndexNotFoundKernelException;
 import org.neo4j.kernel.api.index.InternalIndexState;
+import org.neo4j.kernel.api.operations.LabelImplicationSchemaOperations;
 import org.neo4j.kernel.impl.api.index.IndexDescriptor;
 import org.neo4j.kernel.impl.api.index.IndexingService;
+import org.neo4j.kernel.impl.api.index.LabelRule;
+import org.neo4j.kernel.impl.api.index.LabelRuleRepository;
 import org.neo4j.kernel.impl.core.KeyNotFoundException;
-import org.neo4j.kernel.impl.core.NodeImpl;
 import org.neo4j.kernel.impl.core.NodeManager;
 import org.neo4j.kernel.impl.core.PropertyIndexManager;
 import org.neo4j.kernel.impl.nioneo.store.IndexRule;
@@ -61,13 +66,13 @@ import org.neo4j.kernel.impl.persistence.PersistenceManager;
  * This layer interacts with committed data. It currently delegates to several of the older XXXManager-type classes.
  * This should be refactored to use a cleaner read-only interface.
  *
- * Also, caching currently lives above this layer, but it really should live *inside* the read-only abstraction that this
- * thing takes.
+ * Also, caching currently lives above this layer, but it really should live *inside* the read-only abstraction that
+ * this thing takes.
  *
  * Cache reading and invalidation is not the concern of this part of the system, that is an optimization on top of the
  * committed data in the database, and should as such live under that abstraction.
  */
-public class StoreStatementContext implements StatementContext
+public class StoreStatementContext implements StatementContext, LabelImplicationSchemaOperations
 {
     private final PropertyIndexManager propertyIndexManager;
     private final NodeManager nodeManager;
@@ -375,5 +380,39 @@ public class StoreStatementContext implements StatementContext
     public Iterable<Long> exactIndexLookup( long indexId, Object value ) throws IndexNotFoundKernelException
     {
         return indexReaderFactory.newReader( indexId ).lookup( value );
+    }
+
+
+    @Override
+    public void addLabelImplications( long labelId, Set<Long> impliedLabelIds )
+            throws ConstraintViolationKernelException
+    {
+        createLabelImplications( labelId, impliedLabelIds );
+    }
+
+    @Override
+    public Set<Long> getDirectLabelImplications( Iterator<Long> labelIds ) throws ConstraintViolationKernelException
+    {
+        LabelRuleRepository repository = getLabelRuleRepository();
+        return repository.getDirectlyImpliedLabels( labelIds );
+    }
+
+    private LabelRuleRepository getLabelRuleRepository()
+    {
+        SchemaStore schemaStore = neoStore.getSchemaStore();
+        LabelRuleRepository repository = new LabelRuleRepository();
+        for (LabelRule rule : schemaStore.loadRules( Kind.getConverter( LabelRule.class ) ) )
+            repository.add( rule );
+        return repository;
+    }
+
+    private LabelRule createLabelImplications( long labelId, Set<Long> impliedLabelIds )
+            throws ConstraintViolationKernelException
+    {
+        SchemaStore schemaStore = neoStore.getSchemaStore();
+        long id = schemaStore.nextId();
+        LabelRule rule = new LabelRule( id, labelId, impliedLabelIds );
+        persistenceManager.createSchemaRule( rule );
+        return rule;
     }
 }

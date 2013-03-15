@@ -23,6 +23,7 @@ import static org.neo4j.helpers.Exceptions.launderedException;
 
 import java.nio.ByteBuffer;
 
+import org.neo4j.helpers.Converter;
 import org.neo4j.kernel.impl.api.index.LabelRule;
 
 public interface SchemaRule extends RecordSerializable
@@ -41,7 +42,7 @@ public interface SchemaRule extends RecordSerializable
      * @return the kind of this schema rule
      */
     Kind getKind();
-    
+
     public static enum Kind
     {
         INDEX_RULE( 1, IndexRule.class )
@@ -53,14 +54,13 @@ public interface SchemaRule extends RecordSerializable
             }
         },
 
-        LABEL_RULE( 2, LabelRule.class)
+        LABEL_RULE( 2, LabelRule.class )
         {
             @Override
             protected LabelRule newRule( long id, long labelId, ByteBuffer buffer )
             {
                 return new LabelRule( id, labelId, buffer );
             }
-
         };
 
         private final byte id;
@@ -82,9 +82,20 @@ public interface SchemaRule extends RecordSerializable
         {
             return this.id;
         }
-        
+
+        @SuppressWarnings("unchecked")
+        public static <T extends SchemaRule> Converter<SchemaRule, T> getConverter(Class<T> clazz)
+        {
+            if (clazz.isAssignableFrom( IndexRule.class ))
+                return (Converter<SchemaRule, T>) new KindConverter<IndexRule>( INDEX_RULE );
+            if (clazz.isAssignableFrom( LabelRule.class ))
+                return (Converter<SchemaRule, T>) new KindConverter<IndexRule>( LABEL_RULE );
+
+            throw new IllegalArgumentException( "Unsupported kind converter requested" );
+        }
+
         protected abstract SchemaRule newRule( long id, long labelId, ByteBuffer buffer );
-        
+
         public static SchemaRule deserialize( long id, ByteBuffer buffer )
         {
             long labelId = buffer.getInt();
@@ -104,9 +115,35 @@ public interface SchemaRule extends RecordSerializable
             switch ( id )
             {
             case 1: return Kind.INDEX_RULE;
+            case 2: return Kind.LABEL_RULE;
             default:
                 throw new IllegalArgumentException( "Unknown kind id " + id );
             }
+        }
+    }
+
+    public static class KindConverter<T extends SchemaRule> implements Converter<SchemaRule, T>
+    {
+        private final Kind kind;
+
+        public KindConverter( Kind kind )
+        {
+            if (kind == null)
+                throw new IllegalArgumentException( "Kind must not be null" );
+            this.kind = kind;
+        }
+
+        @Override
+        public boolean accept( SchemaRule item )
+        {
+            return kind.equals( item.getKind() );
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public T apply( SchemaRule schemaRule )
+        {
+            return (T) kind.getRuleClass().cast( schemaRule );
         }
     }
 }

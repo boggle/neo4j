@@ -23,6 +23,7 @@ import static java.nio.ByteBuffer.wrap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
+import static org.neo4j.helpers.collection.IteratorUtil.asSet;
 import static org.neo4j.helpers.collection.IteratorUtil.first;
 import static org.neo4j.helpers.collection.MapUtil.stringMap;
 import static org.neo4j.kernel.impl.util.BytePrinter.hex;
@@ -90,7 +91,7 @@ public class SchemaStoreTest
         expected.putLong( 92l );
         expected.putLong( 108l );
 
-        SchemaRule labelRule = new LabelRule( store.nextId(), labelId, new long[] { 42l, 92l, 108l } );
+        SchemaRule labelRule = new LabelRule( store.nextId(), labelId, asSet( 42l, 92l, 108l ) );
 
         // WHEN
         Collection<DynamicRecord> records = store.allocateFrom( labelRule );
