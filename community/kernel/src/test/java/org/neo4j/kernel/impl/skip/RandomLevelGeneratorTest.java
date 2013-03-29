@@ -24,11 +24,12 @@ import static junit.framework.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.junit.Test;
+import org.neo4j.kernel.impl.skip.base.RandomLevelGenerator;
 
-public class RandomHeightGeneratorTest
+public class RandomLevelGeneratorTest
 {
     @Test
-    public void testHeightGenerator() {
+    public void testLevelGeneration() {
         // GIVEN
         int h_max = 24;  /* keep low enough for this test to run fast */
         int p_bits = 1;
@@ -37,19 +38,19 @@ public class RandomHeightGeneratorTest
         int i = 0;
         long rounds = 0;
         long sum = 0;
-        RandomHeightGenerator heightGenerator = new RandomHeightGenerator( h_max, p_bits );
+        RandomLevelGenerator levelGenerator = new RandomLevelGenerator( h_max, p_bits );
 
         // WHEN
         while (i < h_max) {
-            int j = heightGenerator.getRandomHeight();
-            assertTrue( j > 0 );
-            assertTrue( j <= h_max );
-            if (counts[j-1] == 0) {
+            int j = levelGenerator.newLevel();
+            assertTrue( j >= 0 );
+            assertTrue( j < h_max );
+            if (counts[j] == 0) {
                System.out.print( j );
                System.out.print( ' ' );
                i++;
             }
-            counts[j-1]++;
+            counts[j]++;
             rounds++;
             sum += j;
         }

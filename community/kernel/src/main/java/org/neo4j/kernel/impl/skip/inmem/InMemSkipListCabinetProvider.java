@@ -17,38 +17,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.skip;
+package org.neo4j.kernel.impl.skip.inmem;
+
+import org.neo4j.kernel.impl.skip.LevelGenerator;
+import org.neo4j.kernel.impl.skip.SkipListCabinet;
+import org.neo4j.kernel.impl.skip.SkipListCabinetProvider;
 
 public class InMemSkipListCabinetProvider<K, V> implements SkipListCabinetProvider<InMemSkipListRecord<K, V>, K, V>
 {
-    public static final int DEFAULT_MAX_HEIGHT = 16;
-
-    private final int defaultMaxHeight;
-
-    public InMemSkipListCabinetProvider()
-    {
-        this( DEFAULT_MAX_HEIGHT );
-    }
-
-    public InMemSkipListCabinetProvider( int defaultMaxHeight )
-    {
-        this.defaultMaxHeight = defaultMaxHeight;
-    }
-
     @Override
-    public SkipListCabinet<InMemSkipListRecord<K, V>, K, V> createRecordOps( int maxHeight )
+    public SkipListCabinet<InMemSkipListRecord<K, V>, K, V> openCabinet( LevelGenerator levelGenerator )
     {
-        return new InMemSkipListCabinet<K, V>( maxHeight );
-    }
-
-    @Override
-    public SkipListCabinet<InMemSkipListRecord<K, V>, K, V> getDefaultCabinet()
-    {
-        return createRecordOps( getDefaultMaxHeight() );
-    }
-
-    public int getDefaultMaxHeight()
-    {
-        return defaultMaxHeight;
+        return new InMemSkipListCabinet<K, V>( levelGenerator );
     }
 }

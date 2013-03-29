@@ -19,8 +19,14 @@
  */
 package org.neo4j.kernel.impl.skip;
 
+import org.neo4j.kernel.impl.skip.SkipListCabinetProvider;
+import org.neo4j.kernel.impl.skip.base.SkipListAccessorBase;
+
+/**
+ * Implementation of {@link org.neo4j.kernel.impl.skip.base.SkipListAccessorBase} for comparable keys and values
+ */
 public class SkipListAccessor<R, K extends Comparable<K>, V extends Comparable<V>>
-        extends AbstractSkipListAccessor<R, K, V>
+        extends SkipListAccessorBase<R, K, V>
 {
     public SkipListAccessor( SkipListCabinetProvider<R, K, V> cabinetProvider ) {
         super( cabinetProvider );

@@ -52,13 +52,13 @@ public class LabelStoreTest
 //    }
 //
 //    @Test @Ignore("too slow to run by default, needed for testing and parameter tuning of skip list store")
-//    public void testHeightGenerator() {
+//    public void testLevelGeneration() {
 //        // GIVEN
 //        long[] counts = new long[SkipListIndexStore.H_MAX];
 //        int i = 0;
 //        long rounds = 0;
 //        long sum = 0;
-//        RandomHeightGenerator heightGenerator = store.getHeightGenerator();
+//        RandomLevelGenerator heightGenerator = store.getHeightGenerator();
 //
 //        // WHEN
 //        while (i < SkipListIndexStore.H_MAX) {

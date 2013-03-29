@@ -17,15 +17,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.skip;
+package org.neo4j.kernel.impl.skip.base;
 
-public abstract class AbstractSkipListCabinet<R, K, V> implements SkipListCabinet<R, K, V>
+import org.neo4j.kernel.impl.skip.SkipListCabinet;
+
+/**
+ * Default implementation of some methods of {@link org.neo4j.kernel.impl.skip.SkipListCabinet}
+ */
+public abstract class SkipListCabinetBase<R, K, V> implements SkipListCabinet<R, K, V>
 {
     private final int maxHeight;
 
     private int refCount = 1;
 
-    protected AbstractSkipListCabinet( int maxHeight )
+    protected SkipListCabinetBase( int maxHeight )
     {
         if (maxHeight < 1)
             throw new IllegalArgumentException(  );
@@ -55,14 +60,25 @@ public abstract class AbstractSkipListCabinet<R, K, V> implements SkipListCabine
     {
         assertOpen();
         try {
-            finish();
+            onClose();
         }
         finally {
             refCount = 0;
         }
     }
 
-    protected abstract void finish();
+    @Override
+    public void delete()
+    {
+        close();
+    }
+
+    /**
+     * Called exactly once when this cabinet is closed
+     *
+     * Implement in subclasses
+     */
+    protected abstract void onClose();
 
     @Override
     public boolean isOpen()
@@ -70,11 +86,14 @@ public abstract class AbstractSkipListCabinet<R, K, V> implements SkipListCabine
         return refCount > 0;
     }
 
-
     @Override
-    public int getCurrentMaxLevel()
+    public int getMaxLevel( R record )
     {
-        return getHeight( getHead() );
+        int maxHeight = getHeight( record );
+        for (int level = maxHeight - 1; level > 0; level--)
+            if ( ! isNil( getNext( record, level ) ) )
+                return level;
+        return 0;
     }
 
     @Override
@@ -83,9 +102,9 @@ public abstract class AbstractSkipListCabinet<R, K, V> implements SkipListCabine
         return this.maxHeight;
     }
 
-
-    protected void assertOpen() {
+    public void assertOpen() {
         if (! isOpen())
-            throw new IllegalStateException( "Context already closed" );
+            throw new IllegalStateException( "Cabinet already closed" );
     }
+
 }

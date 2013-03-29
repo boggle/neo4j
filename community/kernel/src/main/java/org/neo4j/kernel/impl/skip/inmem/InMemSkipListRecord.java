@@ -17,15 +17,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.skip;
+package org.neo4j.kernel.impl.skip.inmem;
 
 import static java.lang.reflect.Array.newInstance;
 
 public class InMemSkipListRecord<K, V>
 {
     public final K key;
-    public final InMemSkipListRecord<K, V>[] next;
     public V value;
+
+    public final InMemSkipListRecord<K, V>[] next;
 
     InMemSkipListRecord( int height )
     {

@@ -27,10 +27,14 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.neo4j.kernel.impl.skip.base.RandomLevelGenerator;
+import org.neo4j.kernel.impl.skip.inmem.InMemSkipListCabinetProvider;
+import org.neo4j.kernel.impl.skip.inmem.InMemSkipListRecord;
 
 public class InMemSkipListTest
 {
     private SkipListCabinet<InMemSkipListRecord<Long, String>, Long, String> cabinet;
+    private LevelGenerator levelGenerator;
 
     @Test
     public void shouldCreateCabinet()
@@ -167,11 +171,12 @@ public class InMemSkipListTest
     public void before()
     {
         InMemSkipListCabinetProvider<Long, String> cabinetProvider = createCabinetProvider();
-        this.cabinet = cabinetProvider.getDefaultCabinet();
+        this.levelGenerator = new RandomLevelGenerator( 12, 1 );
+        this.cabinet = cabinetProvider.openCabinet( levelGenerator );
     }
     
     private InMemSkipListCabinetProvider<Long, String> createCabinetProvider()
     {
-        return new InMemSkipListCabinetProvider<Long, String>( 8 );
+        return new InMemSkipListCabinetProvider<Long, String>();
     }
 }

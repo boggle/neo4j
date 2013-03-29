@@ -19,9 +19,11 @@
  */
 package org.neo4j.kernel.impl.skip;
 
+/**
+ * Initialize and give access to {@link SkipListCabinet} instances
+ * for use by {@link org.neo4j.kernel.impl.skip.base.SkipListAccessorBase}
+ */
 public interface SkipListCabinetProvider<R, K, V>
 {
-    SkipListCabinet<R, K, V> createRecordOps( int maxHeight );
-
-    SkipListCabinet<R, K, V> getDefaultCabinet();
+    SkipListCabinet<R, K, V> openCabinet( LevelGenerator levelGenerator );
 }

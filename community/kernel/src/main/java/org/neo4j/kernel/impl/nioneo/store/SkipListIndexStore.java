@@ -19,23 +19,12 @@
  */
 package org.neo4j.kernel.impl.nioneo.store;
 
-import static java.util.Arrays.asList;
-
 import java.io.File;
-import java.lang.reflect.Array;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Random;
 
 import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.nioneo.store.windowpool.WindowPoolFactory;
-import org.neo4j.kernel.impl.skip.ValueStrategy;
 import org.neo4j.kernel.impl.util.StringLogger;
 
 /**
@@ -58,23 +47,23 @@ public abstract class SkipListIndexStore<K, V> extends AbstractDynamicStore
 
     public static final long HEAD_ID = 1;
 
-    private final ValueStrategy<K> keyStrategy;
-    private final ValueStrategy<V> valueStrategy;
+//    private final ValueStrategy<K> keyStrategy;
+//    private final ValueStrategy<V> valueStrategy;
 
 //    private final Head head;
 //    private final int numHeadRecords;
-//    private final RandomHeightGenerator heightGen;
+//    private final RandomLevelGenerator heightGen;
 
     private int maxLevelIndex;
 
     public SkipListIndexStore( File fileName, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory,
             WindowPoolFactory windowPoolFactory, FileSystemAbstraction fileSystemAbstraction,
-            StringLogger stringLogger, ValueStrategy<K> keyStrategy, ValueStrategy<V> valueStrategy)
+            StringLogger stringLogger)
     {
         super( fileName, conf, idType, idGeneratorFactory, windowPoolFactory, fileSystemAbstraction, stringLogger );
-        this.keyStrategy = keyStrategy;
-        this.valueStrategy = valueStrategy;
-//        this.heightGen = new RandomHeightGenerator(  );
+//        this.keyStrategy = keyStrategy;
+//        this.valueStrategy = valueStrategy;
+//        this.heightGen = new RandomLevelGenerator(  );
 //        this.head = loadOrCreateHead();
 //        this.numHeadRecords = editRecords( head.id, head ).size();
 //        this.maxLevelIndex = head.getMaxLevelIndex();
@@ -142,10 +131,10 @@ public abstract class SkipListIndexStore<K, V> extends AbstractDynamicStore
 //    }
 //
 //    public boolean contains( K key, V value ) {
-//        return searchEntry( key, value, null ) != null;
+//        return find( key, value, null ) != null;
 //    }
 //
-//    public RandomHeightGenerator getHeightGenerator() {
+//    public RandomLevelGenerator getHeightGenerator() {
 //        return heightGen;
 //    }
 //
@@ -173,7 +162,7 @@ public abstract class SkipListIndexStore<K, V> extends AbstractDynamicStore
 //    }
 //
 //
-//    Entry searchEntry( K key, V value, BaseEntry[] updates ) {
+//    Entry find( K key, V value, BaseEntry[] updates ) {
 //        BaseEntry entry = head;
 //        for(int levelIndex = maxLevelIndex; levelIndex >= 0; levelIndex--)
 //        {
@@ -199,7 +188,7 @@ public abstract class SkipListIndexStore<K, V> extends AbstractDynamicStore
 //    public void insert( K key, V value ) {
 //        // SEARCH (keeping track of insert points per level)
 //        BaseEntry[] updates = (BaseEntry[]) Array.newInstance( BaseEntry.class, H_MAX );
-//        Entry match = searchEntry( key, value, updates );
+//        Entry match = find( key, value, updates );
 //        if (match != null)
 //            return;
 //        insertMissing( key, value, updates );
@@ -209,7 +198,7 @@ public abstract class SkipListIndexStore<K, V> extends AbstractDynamicStore
 //    public void delete( K key, V value ) {
 //        // SEARCH (keeping track of insert points per level)
 //        BaseEntry[] updates = (BaseEntry[]) Array.newInstance( BaseEntry.class, H_MAX );
-//        Entry match = searchEntry( key, value, updates );
+//        Entry match = find( key, value, updates );
 //        if (match == null)
 //            return;
 //
@@ -488,7 +477,7 @@ public abstract class SkipListIndexStore<K, V> extends AbstractDynamicStore
 //    }
 //
 //    @SuppressWarnings({"ConstantConditions", "PointlessArithmeticExpression"})
-//    public static final class RandomHeightGenerator
+//    public static final class RandomLevelGenerator
 //    {
 //        public static final int RAND_BITS = (H_MAX - 1) * P_BITS;
 //
@@ -500,11 +489,11 @@ public abstract class SkipListIndexStore<K, V> extends AbstractDynamicStore
 //
 //        private final Random rand;
 //
-//        public RandomHeightGenerator( Random rand ) {
+//        public RandomLevelGenerator( Random rand ) {
 //            this.rand = rand;
 //        }
 //
-//        public RandomHeightGenerator()
+//        public RandomLevelGenerator()
 //        {
 //            this( new Random(  ) );
 //        }

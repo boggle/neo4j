@@ -17,16 +17,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.skip;
+package org.neo4j.kernel.impl.skip.inmem;
 
-class InMemSkipListCabinet<K, V> extends AbstractSkipListCabinet<InMemSkipListRecord<K, V>, K,V>
+import java.lang.reflect.Array;
+
+import org.neo4j.kernel.impl.skip.LevelGenerator;
+import org.neo4j.kernel.impl.skip.base.SkipListCabinetBase;
+
+class InMemSkipListCabinet<K, V> extends SkipListCabinetBase<InMemSkipListRecord<K, V>, K, V>
 {
     private final InMemSkipListRecord<K, V> head;
+    private final LevelGenerator levelGenerator;
 
-    InMemSkipListCabinet( int maxHeight )
+    InMemSkipListCabinet( LevelGenerator levelGenerator )
     {
-        super( maxHeight );
-        this.head = new InMemSkipListRecord<K, V>( maxHeight );
+        super( levelGenerator.getMaxHeight() );
+        this.head = new InMemSkipListRecord<K, V>( this.getMaxHeight() );
+        this.levelGenerator = levelGenerator;
     }
 
     public InMemSkipListRecord<K, V> createRecord( int height, K key, V data )
@@ -42,7 +49,8 @@ class InMemSkipListCabinet<K, V> extends AbstractSkipListCabinet<InMemSkipListRe
         if (isHead( record ))
             throw new IllegalArgumentException( "Attempt to remove head record" );
         else
-            throw new UnsupportedOperationException(  );
+            /* no-op */
+            ;
     }
 
     @Override
@@ -112,21 +120,21 @@ class InMemSkipListCabinet<K, V> extends AbstractSkipListCabinet<InMemSkipListRe
         return head;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public InMemSkipListRecord<K, V> getLowestNext( InMemSkipListRecord<K, V> entry )
+    public InMemSkipListRecord<K, V>[] newVisitationArray()
     {
-        throw new UnsupportedOperationException(  );
+        return
+            (InMemSkipListRecord<K, V>[]) Array.newInstance( InMemSkipListRecord.class, getMaxHeight() );
     }
 
     @Override
-    public InMemSkipListRecord<K, V> nextAtLevelLessThan( InMemSkipListRecord<K, V> record, int level, K key, V value )
+    public int newRandomLevel()
     {
-        throw new UnsupportedOperationException(  );
+        return levelGenerator.newLevel();
     }
 
-    public void finish()
+    public void onClose()
     {
-        throw new UnsupportedOperationException(  );
     }
-
 }

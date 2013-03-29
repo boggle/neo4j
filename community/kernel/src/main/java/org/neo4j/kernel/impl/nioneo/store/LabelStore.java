@@ -25,7 +25,6 @@ import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.nioneo.store.windowpool.WindowPoolFactory;
-import org.neo4j.kernel.impl.skip.ValueStrategy;
 import org.neo4j.kernel.impl.util.StringLogger;
 
 public class LabelStore extends SkipListIndexStore<Long, Long> {
@@ -38,8 +37,7 @@ public class LabelStore extends SkipListIndexStore<Long, Long> {
                           WindowPoolFactory windowPoolFactory, FileSystemAbstraction fileSystemAbstraction,
                           StringLogger stringLogger )
     {
-        super( fileName, conf, idType, idGeneratorFactory, windowPoolFactory, fileSystemAbstraction, stringLogger,
-               ValueStrategy.LONG, ValueStrategy.LONG );
+        super( fileName, conf, idType, idGeneratorFactory, windowPoolFactory, fileSystemAbstraction, stringLogger );
     }
 
     @Override

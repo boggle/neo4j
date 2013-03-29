@@ -19,6 +19,10 @@
  */
 package org.neo4j.kernel.impl.skip;
 
+/**
+ * Storage operations used by implementers of {@link SkipListOperations}
+ *
+ */
 public interface SkipListCabinet<R, K, V>
 {
     void acquire();
@@ -26,14 +30,21 @@ public interface SkipListCabinet<R, K, V>
 
     boolean isOpen();
 
+    void assertOpen();
+
     int getMaxHeight();
-    int getCurrentMaxLevel();
+
+    int getMaxLevel( R record );
+
+    R[] newVisitationArray();
 
     R nil();
     R getHead();
 
     boolean isNil(R r);
     boolean isHead(R r);
+
+    int newRandomLevel();
 
     R createRecord( int height, K key, V data );
 
@@ -48,12 +59,10 @@ public interface SkipListCabinet<R, K, V>
 
     int getHeight(R record);
 
-    R getLowestNext( R entry );
-
     R getNext( R record, int i);
     void setNext( R record, int i, R newNext );
 
-    R nextAtLevelLessThan( R record, int level, K key, V value );
-
     public void close();
+
+    public void delete();
 }
