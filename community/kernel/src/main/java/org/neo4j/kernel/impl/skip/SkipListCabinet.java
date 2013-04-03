@@ -46,7 +46,7 @@ public interface SkipListCabinet<R, K, V>
 
     int newRandomLevel();
 
-    R createRecord( int height, K key, V data );
+    R createRecordWithHeight( int height, K key, V data );
 
     void removeRecord( R record );
 
@@ -55,7 +55,6 @@ public interface SkipListCabinet<R, K, V>
     K getRecordKey(R record);
 
     V getRecordValue( R record );
-    V setRecordValue( R entry, V newData );
 
     int getHeight(R record);
 

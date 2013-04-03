@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import org.neo4j.kernel.impl.api.index.IndexingService;
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
+import org.neo4j.kernel.impl.nioneo.store.GrowableByteArray;
 import org.neo4j.kernel.impl.nioneo.store.IndexRule;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
 import org.neo4j.kernel.impl.nioneo.store.RecordSerializer;
@@ -106,7 +107,7 @@ public class SchemaRuleCommandTest
         RecordSerializer serializer = new RecordSerializer();
         serializer = serializer.append( rule );
         DynamicRecord record = new DynamicRecord( id );
-        record.setData( serializer.serialize() );
+        record.setData( serializer.serialize( new GrowableByteArray( ) ) );
         if ( inUse )
         {
             record.setCreated();

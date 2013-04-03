@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.neo4j.kernel.impl.skip.base.SkipListCabinetBase;
 
-public class BaseSkipListAccessorTest
+public class SkipListCabinetBaseTest
 {
     @Test
     public void shouldBeOpenWhenCreated() {

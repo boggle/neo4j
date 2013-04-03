@@ -19,163 +19,18 @@
  */
 package org.neo4j.kernel.impl.skip;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
-
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.neo4j.kernel.impl.skip.base.RandomLevelGenerator;
 import org.neo4j.kernel.impl.skip.inmem.InMemSkipListCabinetProvider;
 import org.neo4j.kernel.impl.skip.inmem.InMemSkipListRecord;
 
-public class InMemSkipListTest
+public class InMemSkipListTest extends GenericSkipListAccessorTest<InMemSkipListRecord<Long, String>>
 {
-    private SkipListCabinet<InMemSkipListRecord<Long, String>, Long, String> cabinet;
-    private LevelGenerator levelGenerator;
-
-    @Test
-    public void shouldCreateCabinet()
+    @Override
+    protected SkipListAccessor<InMemSkipListRecord<Long, String>, Long, String> createAccessor()
     {
-        // ENSURE
-        assertFalse( null == cabinet );
+        return new SkipListAccessor<InMemSkipListRecord<Long, String>, Long, String>( createCabinetProvider() );
     }
 
-    @Test
-    public void shouldAccessHeadRecord()
-    {
-        // WHEN
-        InMemSkipListRecord<Long, String> head = cabinet.getHead();
-
-        // THEN
-        assertFalse( null == head );
-        assertTrue( cabinet.isHead( head ) );
-    }
-
-    @Test
-    public void shouldKnowOwnNil()
-    {
-        // ENSURE
-        assertTrue( cabinet.isNil( cabinet.nil() ) );
-    }
-
-    @Test
-    public void shouldHaveHeadThatDiffersFromNil()
-    {
-        // WHEN
-        InMemSkipListRecord<Long, String> head = cabinet.getHead();
-        
-        // THEN
-        assertFalse( cabinet.isNil( head ) );
-    }
-
-    @Test
-    public void shouldHaveNilDifferentFromHead()
-    {
-        // WHEN
-        InMemSkipListRecord<Long, String> head = cabinet.getHead();
-
-        // THEN
-        assertFalse( cabinet.isNil( head ) );
-    }
-
-    @Test
-    public void shouldCreateNewNonNilRecord()
-    {
-        // WHEN
-        InMemSkipListRecord<Long, String> record = cabinet.createRecord( 8, 0l, "data" );
-
-        // THEN
-        assertFalse( cabinet.isNil( record ) );
-        assertEquals( (Long) 0l, cabinet.getRecordKey( record ) );
-        assertEquals( "data", cabinet.getRecordValue( record ) );
-    }
-
-    @Test
-    public void shouldUpdateRecordValue()
-    {
-        // GIVEN
-        InMemSkipListRecord<Long, String> record = cabinet.createRecord( 8, 0l, "data" );
-
-        // WHEN
-        cabinet.setRecordValue( record, "henry" );
-
-        // THEN
-        assertFalse( cabinet.isNil( record ) );
-        assertEquals( (Long) 0l, cabinet.getRecordKey( record ) );
-        assertEquals( "henry", cabinet.getRecordValue( record ) );
-    }
-
-    @Test
-    public void shouldCreateRecordsWithPositiveHeight()
-    {
-        // GIVEN
-        InMemSkipListRecord<Long, String> record = cabinet.createRecord( 8, 0l, "data" );
-
-        // WHEN
-        int height = cabinet.getHeight( record );
-
-        // THEN
-        assertTrue( height > 0 );
-        assertTrue( height <= cabinet.getMaxHeight() );
-    }
-
-    @Test
-    public void shouldCreateRecordsWithNextsPointingToNil()
-    {
-        // GIVEN
-        InMemSkipListRecord<Long, String> record = cabinet.createRecord( 8, 0l, "data" );
-
-        // WHEN
-        int height = cabinet.getHeight( record );
-
-        // THEN
-        for (int i = 0; i < height; i++)
-            assertTrue( cabinet.isNil( cabinet.getNext( record, i ) ) );
-    }
-
-    @Test
-    public void shouldCreateRecordsWithUpdateableNexts()
-    {
-        // GIVEN
-        InMemSkipListRecord<Long, String> record = cabinet.createRecord( 8, 0l, "data" );
-
-        // WHEN
-        int height = cabinet.getHeight( record );
-        for (int i = 0; i < height; i++)
-            cabinet.setNext( record, i, record );
-
-        // THEN
-        for (int i = 0; i < height; i++)
-            assertEquals( record, cabinet.getNext( record, i ) );
-    }
-
-    @Test
-    public void shouldNeverDeleteHead() {
-        // GIVEN
-        InMemSkipListRecord<Long, String> head = cabinet.getHead();
-
-        // ENSURE
-        expectedException.expect( IllegalArgumentException.class );
-
-        // WHEN
-        cabinet.removeRecord( head );
-    }
-
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
-
-    @Before
-    public void before()
-    {
-        InMemSkipListCabinetProvider<Long, String> cabinetProvider = createCabinetProvider();
-        this.levelGenerator = new RandomLevelGenerator( 12, 1 );
-        this.cabinet = cabinetProvider.openCabinet( levelGenerator );
-    }
-    
-    private InMemSkipListCabinetProvider<Long, String> createCabinetProvider()
+    protected InMemSkipListCabinetProvider<Long, String> createCabinetProvider()
     {
         return new InMemSkipListCabinetProvider<Long, String>();
     }

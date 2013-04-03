@@ -21,12 +21,11 @@ package org.neo4j.kernel.impl.skip.inmem;
 
 import static java.lang.reflect.Array.newInstance;
 
-public class InMemSkipListRecord<K, V>
-{
-    public final K key;
-    public V value;
+import org.neo4j.kernel.impl.skip.base.SkipListRecordBase;
 
-    public final InMemSkipListRecord<K, V>[] next;
+public class InMemSkipListRecord<K, V> extends SkipListRecordBase<K, V>
+{
+    public final InMemSkipListRecord<K, V>[] nexts;
 
     InMemSkipListRecord( int height )
     {
@@ -36,13 +35,13 @@ public class InMemSkipListRecord<K, V>
     @SuppressWarnings("unchecked")
     InMemSkipListRecord( int height, K key, V value )
     {
-        this.key = key;
-        this.value = value;
-        this.next = (InMemSkipListRecord<K, V>[]) newInstance( InMemSkipListRecord.class, height );
+        super(key, value);
+        this.nexts = (InMemSkipListRecord<K, V>[]) newInstance( InMemSkipListRecord.class, height );
     }
 
-    public boolean isHead()
+    @Override
+    public int getHeight()
     {
-        return key == null && value == null;
+        return nexts.length;
     }
 }

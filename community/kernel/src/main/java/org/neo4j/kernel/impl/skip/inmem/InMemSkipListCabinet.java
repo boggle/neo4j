@@ -36,7 +36,7 @@ class InMemSkipListCabinet<K, V> extends SkipListCabinetBase<InMemSkipListRecord
         this.levelGenerator = levelGenerator;
     }
 
-    public InMemSkipListRecord<K, V> createRecord( int height, K key, V data )
+    public InMemSkipListRecord<K, V> createRecordWithHeight( int height, K key, V data )
     {
         assertOpen();
         return new InMemSkipListRecord<K, V>( height, key, data );
@@ -71,30 +71,22 @@ class InMemSkipListCabinet<K, V> extends SkipListCabinetBase<InMemSkipListRecord
         return record.value;
     }
 
-    public V setRecordValue( InMemSkipListRecord<K, V> entry, V newData )
-    {
-        assertOpen();
-        V oldData = entry.value;
-        entry.value = newData;
-        return oldData;
-    }
-
     public int getHeight( InMemSkipListRecord<K, V> record )
     {
         assertOpen();
-        return record.next.length;
+        return record.nexts.length;
     }
 
     public InMemSkipListRecord<K, V> getNext( InMemSkipListRecord<K, V> record, int i )
     {
         assertOpen();
-        return record.next[i];
+        return record.nexts[i];
     }
 
     public void setNext( InMemSkipListRecord<K, V> record, int i, InMemSkipListRecord<K, V> newNext )
     {
         assertOpen();
-        record.next[i] = newNext;
+        record.nexts[i] = newNext;
     }
 
     public InMemSkipListRecord<K, V> nil()

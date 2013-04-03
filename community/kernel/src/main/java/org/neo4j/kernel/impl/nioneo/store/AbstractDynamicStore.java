@@ -431,7 +431,7 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
         return forceGetRecord( id );
     }
 
-    public Collection<DynamicRecord> getRecords( long startBlockId )
+    public List<DynamicRecord> getRecords( long startBlockId )
     {
         List<DynamicRecord> recordList = new LinkedList<DynamicRecord>();
         long blockId = startBlockId;
@@ -470,6 +470,23 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
         for ( DynamicRecord record : records )
             buffer.put( record.getData() );
         return ByteBuffer.wrap( target, 0, totalLength );
+    }
+
+    /**
+     * @return a {@link ByteBuffer#slice() sliced} {@link ByteBuffer} wrapping {@code target} or,
+     * if necessary a new larger {@code byte[]} and containing exactly all concatenated data read from records
+     */
+    public static ByteBuffer concatData( Collection<DynamicRecord> records, GrowableByteArray bytes )
+    {
+        int totalLength = 0;
+        for ( DynamicRecord record : records )
+            totalLength += record.getLength();
+
+        ByteBuffer buffer = bytes.getAsWrappedBuffer( totalLength );
+        for ( DynamicRecord record : records )
+            buffer.put( record.getData() );
+        buffer.rewind();
+        return buffer;
     }
 
     private long findHighIdBackwards() throws IOException

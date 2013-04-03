@@ -142,7 +142,7 @@ public abstract class SkipListAccessorBase<R, K, V>
         // insert new after visited
         int maxLevel = cabinet.getMaxLevel( cabinet.getHead() );
         int newLevel = cabinet.newRandomLevel();
-        R entry = cabinet.createRecord( newLevel + 1, key, value ) ;
+        R entry = cabinet.createRecordWithHeight( newLevel + 1, key, value ) ;
         // ensure head will be updated if we create a record higher than any other created before
         if ( newLevel > maxLevel )
             for ( int i = maxLevel + 1; i <= newLevel; i++ )
@@ -181,7 +181,8 @@ public abstract class SkipListAccessorBase<R, K, V>
         cabinet.acquire();
         try
         {
-            return ! cabinet.isNil( findFirst( cabinet, key, value ) );
+            R first = findFirst( cabinet, key, value );
+            return ! cabinet.isNil( first );
         }
         finally
         {
@@ -195,7 +196,8 @@ public abstract class SkipListAccessorBase<R, K, V>
         cabinet.acquire();
         try
         {
-            return ! cabinet.isNil( findFirst( cabinet, key ) );
+            R first = findFirst( cabinet, key );
+            return ! cabinet.isNil( first );
         }
         finally
         {
@@ -259,7 +261,8 @@ public abstract class SkipListAccessorBase<R, K, V>
                     next = cabinet.getNext( entry, level );
                     if ( nextIsNil = cabinet.isNil( next ) )
                         break forward;
-                    switch ( compareRecord_( cabinet, next, key, value ) )
+                    int cmp = compareRecord_( cabinet, next, key, value );
+                    switch ( cmp )
                     {
                         case -1:
                             entry = next;
@@ -275,7 +278,10 @@ public abstract class SkipListAccessorBase<R, K, V>
             if ( nextIsNil )
                 return next;
             else
-                return 0 == compareRecord_( cabinet, next, key, value ) ? next : cabinet.nil();
+            {
+                int cmp = compareRecord_( cabinet, next, key, value );
+                return 0 == cmp ? next : cabinet.nil();
+            }
         }
         finally {
             cabinet.release();
@@ -301,7 +307,8 @@ public abstract class SkipListAccessorBase<R, K, V>
                     next = cabinet.getNext( entry, level );
                     if ( nextIsNil = cabinet.isNil( next ) )
                         break forward;
-                    switch ( compareRecordKey_( cabinet, next, key ) )
+                    int cmp = compareRecordKey_( cabinet, next, key );
+                    switch ( cmp )
                     {
                         case -1:
                             entry = next;
@@ -316,7 +323,10 @@ public abstract class SkipListAccessorBase<R, K, V>
             if ( nextIsNil )
                 return next;
             else
-                return 0 == compareRecordKey_( cabinet, next, key ) ? next : cabinet.nil();
+            {
+                int cmp = compareRecordKey_( cabinet, next, key );
+                return 0 == cmp ? next : cabinet.nil();
+            }
         }
         finally
         {
@@ -387,7 +397,8 @@ public abstract class SkipListAccessorBase<R, K, V>
                     R next = cabinet.getNext( entry, level );
                     if ( cabinet.isNil( next ) )
                         break forward;
-                    switch ( compareRecordKey_( cabinet, next, key  ) )
+                    int cmp = compareRecordKey_( cabinet, next, key );
+                    switch ( cmp )
                     {
                         case -1:
                             entry = next;
@@ -411,8 +422,10 @@ public abstract class SkipListAccessorBase<R, K, V>
     }
 
     private int compareRecord_( SkipListCabinet<R, K, V> cabinet, R record, K key, V value ) {
-        int cmpKeys = compareRecordKey_( cabinet, record, key );
-        return 0 == cmpKeys ? compareRecordValue_( cabinet, record, value ) : cmpKeys;
+        int cmp = compareRecordKey_( cabinet, record, key );
+        if ( cmp == 0 )
+            cmp = compareRecordValue_( cabinet, record, value );
+        return cmp;
     }
 
     private int compareRecordKey_( SkipListCabinet<R, K, V> cabinet, R record, K key )

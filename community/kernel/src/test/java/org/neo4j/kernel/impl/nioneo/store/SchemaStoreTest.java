@@ -124,7 +124,7 @@ public class SchemaStoreTest
 
     private long storeRule( SchemaRule rule )
     {
-        Collection<DynamicRecord> records = store.allocateFrom( rule );
+        Collection<DynamicRecord> records = store.allocateFrom( rule, new GrowableByteArray(  ) );
         for ( DynamicRecord record : records )
             store.updateRecord( record );
         return first( records ).getId();

@@ -61,11 +61,12 @@ public class SchemaStore extends AbstractDynamicStore implements Iterable<Schema
         return TYPE_DESCRIPTOR;
     }
     
-    public Collection<DynamicRecord> allocateFrom( SchemaRule rule )
+    public Collection<DynamicRecord> allocateFrom( SchemaRule rule, GrowableByteArray bytes )
     {
         RecordSerializer serializer = new RecordSerializer();
         serializer = serializer.append( rule );
-        return allocateRecordsFromBytes( serializer.serialize(), asList( forceGetRecord( rule.getId() ) ).iterator() );
+        return allocateRecordsFromBytes( serializer.serialize(bytes),
+                asList( forceGetRecord( rule.getId() ) ).iterator() );
     }
     
     public Iterator<SchemaRule> loadAll()

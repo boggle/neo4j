@@ -32,18 +32,26 @@ public class RecordSerializer
         this.serializables.add( serializable );
         return this;
     }
-    
-    public byte[] serialize()
+
+    public byte[] serialize( GrowableByteArray bytes )
     {
-        int[] lengths = new int[serializables.size()];
-        int totalLength = 0;
-        for ( int i = 0; i < serializables.size(); i++ )
-            totalLength += (lengths[i] = serializables.get( i ).length());
-        
-        byte[] array = new byte[totalLength];
+        int totalLength = computeTotalLength();
+        byte[] array = bytes.get( totalLength );
+
         ByteBuffer target = ByteBuffer.wrap( array );
         for ( int i = 0; i < serializables.size(); i++ )
             serializables.get( i ).serialize( target );
         return array;
     }
+
+    private int computeTotalLength()
+    {
+        int numSerializables = serializables.size();
+        int totalLength = 0;
+        for ( int i = 0; i < numSerializables; i++ )
+            totalLength += serializables.get( i ).length();
+        return totalLength;
+    }
+
+
 }

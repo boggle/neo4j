@@ -17,32 +17,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.skip;
+package org.neo4j.kernel.impl.skip.base;
 
-import org.neo4j.kernel.impl.skip.SkipListCabinetProvider;
-import org.neo4j.kernel.impl.skip.base.SkipListAccessorBase;
-
-/**
- * Implementation of {@link org.neo4j.kernel.impl.skip.base.SkipListAccessorBase} for comparable keys and values
- */
-public class SkipListAccessor<R, K extends Comparable<K>, V extends Comparable<V>>
-        extends SkipListAccessorBase<R, K, V>
+public abstract class SkipListRecordBase<K, V>
 {
-    public SkipListAccessor( SkipListCabinetProvider<R, K, V> cabinetProvider ) {
-        super( cabinetProvider );
+    public final K key;
+    public final V value;
+
+    public SkipListRecordBase( K key, V value )
+    {
+        this.key = key;
+        this.value = value;
     }
 
-    @Override
-    public int compareKeys( K a, K b )
+    public boolean isHead()
     {
-        int cmp = a.compareTo( b );
-        return cmp;
+        return key == null && value == null;
     }
 
-    @Override
-    public int compareValues( V a, V b )
-    {
-        int cmp = a.compareTo( b );
-        return cmp;
-    }
+    public abstract int getHeight();
 }

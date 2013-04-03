@@ -52,6 +52,7 @@ import org.neo4j.kernel.impl.core.TransactionState;
 import org.neo4j.kernel.impl.nioneo.store.AbstractDynamicStore;
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
 import org.neo4j.kernel.impl.nioneo.store.IndexRule;
+import org.neo4j.kernel.impl.nioneo.store.GrowableByteArray;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenRecord;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenStore;
@@ -205,6 +206,8 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     private XaConnection xaConnection;
     private final CacheAccessBackDoor cacheAccess;
     private final IndexingService indexes;
+
+    private final GrowableByteArray scratchBytes = new GrowableByteArray();
 
     WriteTransaction( int identifier, XaLogicalLog log, TransactionState state, NeoStore neoStore,
                       CacheAccessBackDoor cacheAccess, IndexingService indexingService )
