@@ -67,12 +67,6 @@ public abstract class SkipListCabinetBase<R, K, V> implements SkipListCabinet<R,
         }
     }
 
-    @Override
-    public void delete()
-    {
-        close();
-    }
-
     /**
      * Called exactly once when this cabinet is closed
      *

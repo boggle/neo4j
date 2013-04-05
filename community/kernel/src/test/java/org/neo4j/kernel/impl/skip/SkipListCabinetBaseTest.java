@@ -99,6 +99,13 @@ public class SkipListCabinetBaseTest
             {
                 return new Long[ 8 ];
             }
+
+            @Override
+            public SkipListCabinet<Long, Long, Long> reopen()
+            {
+                close();
+                return createCabinet();
+            }
         };
     }
 }

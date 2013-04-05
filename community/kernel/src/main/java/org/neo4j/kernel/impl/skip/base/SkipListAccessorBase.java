@@ -81,6 +81,25 @@ public abstract class SkipListAccessorBase<R, K, V>
     }
 
     @Override
+    public R insertAlways( SkipListCabinet<R, K, V> cabinet, K key, V value )
+    {
+        cabinet.acquire();
+        try
+        {
+            // find best match
+            R[] visited = cabinet.newVisitationArray();
+            R pred      = findPred( cabinet, key, value, visited );
+            // R next      = cabinet.getNext( pred, 0 );
+
+            return insertRecord_( cabinet, key, value, visited );
+        }
+        finally
+        {
+            cabinet.release();
+        }
+    }
+
+    @Override
     public R removeFirst( SkipListCabinet<R, K, V> cabinet, K key, V value )
     {
         cabinet.acquire();
@@ -145,14 +164,18 @@ public abstract class SkipListAccessorBase<R, K, V>
         R entry = cabinet.createRecordWithHeight( newLevel + 1, key, value ) ;
         // ensure head will be updated if we create a record higher than any other created before
         if ( newLevel > maxLevel )
-            for ( int i = maxLevel + 1; i <= newLevel; i++ )
-                visited[i] = cabinet.getHead();
-        // update linked lists
-        for ( int i = 0; i <= newLevel; i++ )
         {
-            R visitedNext = cabinet.getNext( visited[i], i );
-            cabinet.setNext( entry, i, visitedNext );
-            cabinet.setNext( visited[i], i, entry );
+            R head = cabinet.getHead();
+            for ( int level = maxLevel + 1; level <= newLevel; level++ )
+                visited[level] = head;
+        }
+        // update linked lists
+        for ( int level = 0; level <= newLevel; level++ )
+        {
+            R atLevel     = visited[level];
+            R nextAtLevel = cabinet.getNext( atLevel, level );
+            cabinet.setNext( entry, level, nextAtLevel );
+            cabinet.setNext( atLevel, level, entry );
         }
         // return inserted record
         return entry;
@@ -242,6 +265,22 @@ public abstract class SkipListAccessorBase<R, K, V>
         }, resultFun);
     }
 
+    @Override
+    public <I> ResourceIterator<I> findAll( final SkipListCabinet<R, K, V> cabinet,
+                                            Function2<SkipListCabinet<R, K, V>, R, I> resultFun )
+    {
+        // released by iterator
+        cabinet.acquire();
+        final R next = findFirst( cabinet );
+        return new SkipListIterator<R, K, V, I>( cabinet, next, new Predicate<R>() {
+            @Override
+            public boolean accept( R record )
+            {
+                return ! cabinet.isNil( record );
+            }
+        }, resultFun);
+    }
+
     /**
      * Find and return any record with given key and value if it exists, return nil if it doesn't
      */
@@ -327,6 +366,20 @@ public abstract class SkipListAccessorBase<R, K, V>
                 int cmp = compareRecordKey_( cabinet, next, key );
                 return 0 == cmp ? next : cabinet.nil();
             }
+        }
+        finally
+        {
+            cabinet.release();
+        }
+    }
+
+    @Override
+    public R findFirst( SkipListCabinet<R, K, V> cabinet )
+    {
+        cabinet.acquire();
+        try
+        {
+            return cabinet.getNext( cabinet.getHead(), 0 );
         }
         finally
         {

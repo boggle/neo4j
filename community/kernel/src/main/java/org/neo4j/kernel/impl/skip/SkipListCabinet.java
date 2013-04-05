@@ -61,7 +61,7 @@ public interface SkipListCabinet<R, K, V>
     R getNext( R record, int i);
     void setNext( R record, int i, R newNext );
 
-    public void close();
+    public SkipListCabinet<R, K, V> reopen();
 
-    public void delete();
+    public void close();
 }

@@ -20,24 +20,24 @@
 package org.neo4j.kernel.impl.skip;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
-import static org.neo4j.helpers.collection.IteratorUtil.asIterable;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
+import java.util.UUID;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.kernel.impl.skip.base.RandomLevelGenerator;
-import org.neo4j.kernel.impl.skip.inmem.InMemSkipListRecord;
 
 public abstract class GenericSkipListAccessorTest<R>
 {
@@ -179,6 +179,7 @@ public abstract class GenericSkipListAccessorTest<R>
     {
         // GIVEN
         accessor.insertIfMissing( cabinet, 1L, "a" );
+        reopenCabinet();
 
         // WHEN
         R result = accessor.findFirst( cabinet, 1L, "a" );
@@ -208,6 +209,7 @@ public abstract class GenericSkipListAccessorTest<R>
     public void shouldFindInsertedElements() {
         // WHEN
         insertSomeRecords();
+        reopenCabinet();
 
         // THEN
         assertRecordEquals( 1L, "b", accessor.findFirst( cabinet, 1L ) );
@@ -221,6 +223,9 @@ public abstract class GenericSkipListAccessorTest<R>
 
         // THEN
         assertEquals( strCollection( "b", "c" ), asCollection( allOnes ) );
+
+        // GIVEN
+        reopenCabinet();
 
         // WHEN
         Iterator<String> allTwos = accessor.findAll( cabinet, accessor.returnValues(), 2L );
@@ -236,6 +241,7 @@ public abstract class GenericSkipListAccessorTest<R>
 
         // WHEN
         accessor.removeFirst( cabinet, 1L, "b" );
+        reopenCabinet();
 
         // THEN
         assertFalse( accessor.contains( cabinet, 1L, "b" ) );
@@ -248,12 +254,16 @@ public abstract class GenericSkipListAccessorTest<R>
         insertSomeRecords();
         accessor.removeFirst( cabinet, 1L, "c" );
         accessor.removeFirst( cabinet, 2L, "v" );
+        reopenCabinet();
 
         // WHEN
         Iterator<String> allOnes = accessor.findAll( cabinet,  accessor.returnValues(), 1L );
 
         // THEN
         assertEquals( strCollection( "b" ), asCollection( allOnes ) );
+
+        // GIVEN
+        reopenCabinet();
 
         // WHEN
         Iterator<String> allTwos = accessor.findAll( cabinet, accessor.returnValues(), 2L );
@@ -267,6 +277,7 @@ public abstract class GenericSkipListAccessorTest<R>
     {
         // GIVEN
         insertSomeRecords();
+        reopenCabinet();
 
         // WHEN
         accessor.removeFirst( cabinet, 1L );
@@ -281,6 +292,7 @@ public abstract class GenericSkipListAccessorTest<R>
     {
         // GIVEN
         insertSomeRecords();
+        reopenCabinet();
 
         // WHEN
         accessor.removeAll( cabinet, 1L );
@@ -303,16 +315,127 @@ public abstract class GenericSkipListAccessorTest<R>
         assertRecordEquals( 1L, "a", result );
     }
 
+    @Test
+    public void shouldInsertMany()
+    {
+        // GIVEN
+        long start = System.currentTimeMillis();
+        Random random = new Random( System.currentTimeMillis() );
+        String[] values = new String[100];
+        for ( int i = 0; i < values.length; i++ )
+        {
+            values[i] = UUID.randomUUID().toString();
+        }
+        int numInserts = 50000;
+        for ( int i = 0; i < numInserts; i++ )
+        {
+            accessor.insertAlways( cabinet, (long) random.nextInt( 100 ), values[ random.nextInt( 100 ) ] );
+            if (i % 1000 == 999)
+            {
+                // System.out.print( scanItems() + " -> reopen -> " );
+                reopenCabinet();
+                // System.out.println( scanItems() + " -> insert -> " );
+            }
+        }
+        reopenCabinet();
+        long writeEnd = System.currentTimeMillis();
+
+        long duration = writeEnd - start;
+        System.out.println( "\nWrite Duration: " + duration );
+
+        // WHEN
+        int k = scanItems();
+        int numScans = 5;
+        for ( int j = 1; j < numScans; j++)
+            k += scanItems();
+
+        long scanEnd = System.currentTimeMillis();
+
+        // THEN
+        assertEquals( numInserts, k/numScans );
+
+        duration = scanEnd - writeEnd;
+        System.out.println("\nTotal elements: " + k );
+        System.out.println("\nNumber of elements per scan: " + k/numScans );
+        System.out.println( "Total Scan Duration: " + duration );
+        System.out.println( "Avg. Scan Duration: " + duration / numScans );
+    }
+
+    @Test
+    public void shouldInsertAndRemoveMany()
+    {
+        // ASSERT
+        assertTrue( 0 == scanItems() );
+
+        // GIVEN
+        Random random = new Random( System.currentTimeMillis() );
+        String[] values = new String[100];
+        for ( int i = 0; i < values.length; i++ )
+        {
+            values[i] = UUID.randomUUID().toString();
+        }
+        int numTries    = 5000;
+        int numInserts  = 0;
+        int numRemovals = 0;
+        int numSkips    = 0;
+        for ( int i = 0; i < numTries; i++ )
+        {
+            long key = (long) random.nextInt( 100 );
+            if ( random.nextBoolean() )
+            {
+                accessor.insertAlways( cabinet, key, values[ random.nextInt( 100 ) ] );
+                numInserts++;
+            }
+            else
+            {
+                R removed = accessor.removeFirst( cabinet, key );
+                if ( cabinet.isNil( removed ) )
+                    numSkips++;
+                else
+                    numRemovals++;
+            }
+
+            if (i % 1000 == 999)
+                reopenCabinet();
+        }
+        reopenCabinet();
+
+        // WHEN
+        int k = scanItems();
+
+        // THEN
+        assertEquals( numInserts + numRemovals + numSkips, numTries );
+        assertEquals( numInserts - numRemovals, k );
+    }
+
+    private int scanItems()
+    {
+        ResourceIterator<R> all = accessor.findAll( cabinet, accessor.returnRecords() );
+        int k  = 0;
+        R prev = cabinet.nil();
+        R next = cabinet.nil();
+        while( all.hasNext() )
+        {
+            prev     = next;
+            next     = all.next();
+            String v = cabinet.getRecordValue( next );
+            assert (! v.isEmpty() );
+            k += 1;
+        }
+        return k;
+    }
+
     private void assertRecordEquals( Long key, String value, R record )
     {
+        assertFalse( cabinet.isNil( record ) );
         assertEquals( 0, accessor.compareKeys( key, cabinet.getRecordKey( record ) ) );
+        assertFalse( cabinet.isNil( record ) );
         assertEquals( 0, accessor.compareValues( value, cabinet.getRecordValue( record ) ) );
     }
 
 
     private SkipListCabinet<R, Long, String> cabinet;
     private SkipListAccessor<R, Long, String> accessor;
-    private LevelGenerator levelGenerator;
 
     @Before
     public void before() throws Exception
@@ -321,11 +444,16 @@ public abstract class GenericSkipListAccessorTest<R>
         Random rand = new Random();
         long time = System.currentTimeMillis();
         // System.out.println( time );
-        rand.setSeed( time );
-        // rand.setSeed( 1364759296045L );
+        // rand.setSeed( time );
+        rand.setSeed( 1365205655863L );
         RandomLevelGenerator levelGenerator = new RandomLevelGenerator( rand, 12, 1 );
-        this.cabinet = accessor.openCabinet( levelGenerator );
+        cabinet = accessor.openCabinet( levelGenerator );
 
+    }
+
+    public void reopenCabinet()
+    {
+        cabinet = cabinet.reopen();
     }
 
     @After

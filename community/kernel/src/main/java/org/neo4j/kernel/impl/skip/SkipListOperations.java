@@ -29,7 +29,7 @@ public interface SkipListOperations<R, K, V>
 {
     R insertIfMissing( SkipListCabinet<R, K, V> cabinet, K key, V value );
 
-    // R insertAlways( SkipListCabinet<R, K, V> cabinet, K key, V value );
+    R insertAlways( SkipListCabinet<R, K, V> cabinet, K key, V value );
 
     // R updateOrInsert( SkipListCabinet<R, K, V> cabinet, K key, V value, V newValue );
 
@@ -57,9 +57,14 @@ public interface SkipListOperations<R, K, V>
     <I> ResourceIterator<I> findAll( SkipListCabinet<R, K, V> cabinetIn,
                                      Function2<SkipListCabinet<R, K, V>, R, I> resultFun,  K key );
 
+    <I> ResourceIterator<I> findAll( SkipListCabinet<R, K, V> cabinetIn,
+                                     Function2<SkipListCabinet<R, K, V>, R, I> resultFun  );
+
     R findFirst( SkipListCabinet<R, K, V> cabinet, K key, V value );
 
     R findFirst( SkipListCabinet<R, K, V> cabinet, K key );
+
+    R findFirst( SkipListCabinet<R, K, V> cabinet );
 
     R findPred( SkipListCabinet<R, K, V> cabinet, K key, V value, R[] visited );
 

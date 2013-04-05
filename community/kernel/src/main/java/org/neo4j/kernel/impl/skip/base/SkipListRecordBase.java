@@ -21,8 +21,8 @@ package org.neo4j.kernel.impl.skip.base;
 
 public abstract class SkipListRecordBase<K, V>
 {
-    public final K key;
-    public final V value;
+    protected final K key;
+    protected final V value;
 
     public SkipListRecordBase( K key, V value )
     {
@@ -36,4 +36,14 @@ public abstract class SkipListRecordBase<K, V>
     }
 
     public abstract int getHeight();
+
+    public K getKey()
+    {
+        return key;
+    }
+
+    public V getValue()
+    {
+        return value;
+    }
 }

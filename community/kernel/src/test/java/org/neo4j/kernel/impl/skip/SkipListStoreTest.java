@@ -12,7 +12,6 @@ import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.nioneo.store.DefaultWindowPoolFactory;
 import org.neo4j.kernel.impl.nioneo.store.RecordFieldSerializer;
-import org.neo4j.kernel.impl.nioneo.store.SkipListIndexStore;
 import org.neo4j.kernel.impl.nioneo.store.StoreFactory;
 import org.neo4j.kernel.impl.skip.store.SkipListStore;
 import org.neo4j.kernel.impl.skip.store.SkipListStoreRecord;

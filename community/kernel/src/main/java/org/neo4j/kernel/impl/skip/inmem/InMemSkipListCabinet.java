@@ -22,6 +22,7 @@ package org.neo4j.kernel.impl.skip.inmem;
 import java.lang.reflect.Array;
 
 import org.neo4j.kernel.impl.skip.LevelGenerator;
+import org.neo4j.kernel.impl.skip.SkipListCabinet;
 import org.neo4j.kernel.impl.skip.base.SkipListCabinetBase;
 
 class InMemSkipListCabinet<K, V> extends SkipListCabinetBase<InMemSkipListRecord<K, V>, K, V>
@@ -31,8 +32,13 @@ class InMemSkipListCabinet<K, V> extends SkipListCabinetBase<InMemSkipListRecord
 
     InMemSkipListCabinet( LevelGenerator levelGenerator )
     {
+        this( levelGenerator, new InMemSkipListRecord<K, V>( levelGenerator.getMaxHeight() ) );
+    }
+
+    private InMemSkipListCabinet( LevelGenerator levelGenerator, InMemSkipListRecord<K, V> head )
+    {
         super( levelGenerator.getMaxHeight() );
-        this.head = new InMemSkipListRecord<K, V>( this.getMaxHeight() );
+        this.head = head;
         this.levelGenerator = levelGenerator;
     }
 
@@ -62,13 +68,13 @@ class InMemSkipListCabinet<K, V> extends SkipListCabinetBase<InMemSkipListRecord
     public K getRecordKey( InMemSkipListRecord<K, V> record )
     {
         assertOpen();
-        return record.key;
+        return record.getKey();
     }
 
     public V getRecordValue( InMemSkipListRecord<K, V> record )
     {
         assertOpen();
-        return record.value;
+        return record.getValue();
     }
 
     public int getHeight( InMemSkipListRecord<K, V> record )
@@ -128,5 +134,12 @@ class InMemSkipListCabinet<K, V> extends SkipListCabinetBase<InMemSkipListRecord
 
     public void onClose()
     {
+    }
+
+    @Override
+    public SkipListCabinet<InMemSkipListRecord<K, V>, K, V> reopen()
+    {
+        close();
+        return new InMemSkipListCabinet<K, V>( levelGenerator, head );
     }
 }

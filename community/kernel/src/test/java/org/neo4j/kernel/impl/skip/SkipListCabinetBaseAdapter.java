@@ -115,9 +115,4 @@ public abstract class SkipListCabinetBaseAdapter<R, K, V> extends SkipListCabine
     protected void onClose()
     {
     }
-
-    @Override
-    public void delete()
-    {
-    }
 }
