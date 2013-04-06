@@ -30,13 +30,6 @@ public abstract class SkipListRecordBase<K, V>
         this.value = value;
     }
 
-    public boolean isHead()
-    {
-        return key == null && value == null;
-    }
-
-    public abstract int getHeight();
-
     public K getKey()
     {
         return key;
@@ -46,4 +39,12 @@ public abstract class SkipListRecordBase<K, V>
     {
         return value;
     }
+
+    public boolean isHead()
+    {
+        return key == null && value == null;
+    }
+
+    public abstract int getHeight();
+
 }

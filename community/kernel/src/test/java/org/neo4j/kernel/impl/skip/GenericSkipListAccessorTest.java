@@ -38,6 +38,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.kernel.impl.skip.base.RandomLevelGenerator;
+import org.neo4j.kernel.impl.skip.store.SkipListStore;
 
 public abstract class GenericSkipListAccessorTest<R>
 {
@@ -324,7 +325,7 @@ public abstract class GenericSkipListAccessorTest<R>
         String[] values = new String[100];
         for ( int i = 0; i < values.length; i++ )
         {
-            values[i] = UUID.randomUUID().toString();
+            values[i] = UUID.randomUUID().toString().substring( 0, 8 );
         }
         int numInserts = 50000;
         for ( int i = 0; i < numInserts; i++ )
@@ -355,10 +356,14 @@ public abstract class GenericSkipListAccessorTest<R>
         assertEquals( numInserts, k/numScans );
 
         duration = scanEnd - writeEnd;
-        System.out.println("\nTotal elements: " + k );
+        System.out.println("\nInserted elements: " + numInserts );
+        System.out.println("\nScanned elements: " + k );
         System.out.println("\nNumber of elements per scan: " + k/numScans );
         System.out.println( "Total Scan Duration: " + duration );
         System.out.println( "Avg. Scan Duration: " + duration / numScans );
+
+        System.out.println( "Storage used (KB): " + getStorageUsed()/1024 );
+        System.out.println( "Storage per entry: " + getStorageUsed()/numInserts );
     }
 
     @Test
@@ -444,11 +449,17 @@ public abstract class GenericSkipListAccessorTest<R>
         Random rand = new Random();
         long time = System.currentTimeMillis();
         // System.out.println( time );
-        // rand.setSeed( time );
-        rand.setSeed( 1365205655863L );
-        RandomLevelGenerator levelGenerator = new RandomLevelGenerator( rand, 12, 1 );
+        rand.setSeed( time );
+        // rand.setSeed( 1365205655863L );
+        LevelGenerator levelGenerator = newRandomLevelGenerator( rand );
         cabinet = accessor.openCabinet( levelGenerator );
 
+    }
+
+    protected LevelGenerator newRandomLevelGenerator( Random rand )
+    {
+        // return new RandomLevelGenerator( rand, 12, 1 );
+        return SkipListStore.newDefaultLevelGenerator();
     }
 
     public void reopenCabinet()
@@ -467,6 +478,11 @@ public abstract class GenericSkipListAccessorTest<R>
     public ExpectedException expectedException = ExpectedException.none();
 
     protected abstract SkipListAccessor<R, Long, String> createAccessor( );
+
+    protected long getStorageUsed()
+    {
+        return 0;
+    }
 
     protected Collection<String> strCollection( String... elems ) {
         final ArrayList<String> list = new ArrayList<String>( elems.length );

@@ -22,13 +22,10 @@ package org.neo4j.kernel.impl.skip.store;
 import static org.neo4j.helpers.collection.IteratorUtil.asIterator;
 
 import java.io.File;
-import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import org.neo4j.helpers.ThisShouldNotHappenError;
 import org.neo4j.kernel.IdGeneratorFactory;
@@ -39,15 +36,11 @@ import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
 import org.neo4j.kernel.impl.nioneo.store.GrowableByteArray;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
-import org.neo4j.kernel.impl.nioneo.store.KeyValueSerializer;
-import org.neo4j.kernel.impl.nioneo.store.RecordSerializer;
 import org.neo4j.kernel.impl.nioneo.store.RecordFieldSerializer;
 import org.neo4j.kernel.impl.nioneo.store.windowpool.WindowPoolFactory;
 import org.neo4j.kernel.impl.skip.LevelGenerator;
-import org.neo4j.kernel.impl.skip.SkipListCabinet;
 import org.neo4j.kernel.impl.skip.SkipListCabinetProvider;
 import org.neo4j.kernel.impl.skip.base.RandomLevelGenerator;
-import org.neo4j.kernel.impl.skip.base.SkipListCabinetBase;
 import org.neo4j.kernel.impl.util.StringLogger;
 
 public class SkipListStore<K, V>
@@ -55,6 +48,7 @@ public class SkipListStore<K, V>
         implements SkipListCabinetProvider<SkipListStoreRecord<K, V>, K , V>
 {
     public static final long HEAD_ID = 1;
+
     public static final String TYPE_DESCRIPTOR = "SkipListStore";
     public static final String VERSION = buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR );
 
@@ -62,7 +56,7 @@ public class SkipListStore<K, V>
     public static final int P_BITS = 2;  /* p = 1/2^P_BITS */
     public static final int H_MAX  = 18; /* stores up to 2^36 node or relationship ids */
 
-    public static final int BLOCK_SIZE = 42;
+    public static final int BLOCK_SIZE = 88;
 
     private final RecordFieldSerializer<K> keySerializer;
     private final RecordFieldSerializer<V> valueSerializer;
@@ -76,7 +70,6 @@ public class SkipListStore<K, V>
         this.keySerializer = keySerializer;
         this.valueSerializer = valueSerializer;
     }
-
 
     @Override
     public String getTypeDescriptor()
@@ -93,9 +86,9 @@ public class SkipListStore<K, V>
     }
 
     @Override
-    public Cabinet openCabinet( LevelGenerator levelGenerator )
+    public SkipListStoreCabinet<K, V> openCabinet( LevelGenerator levelGenerator )
     {
-        return new Cabinet( levelGenerator, new StoreView() );
+        return new SkipListStoreCabinet<K, V>( levelGenerator, new StoreView() );
     }
 
     public static final LevelGenerator newDefaultLevelGenerator()
@@ -103,29 +96,148 @@ public class SkipListStore<K, V>
         return new RandomLevelGenerator( H_MAX, P_BITS );
     }
 
-    class StoreView implements KeyValueSerializer<K, V>
+    class StoreView
     {
-        private final GrowableByteArray growableBytes = new GrowableByteArray( 2 * BLOCK_SIZE );
+        private final GrowableByteArray growableBytes = new GrowableByteArray(  );
 
-        public RecordFieldSerializer<K> getKeySerializer()
+        SkipListStoreRecord<K, V> getHead( int maxHeight )
         {
-            return keySerializer;
+            long highId = getHighestPossibleIdInUse();
+            if (highId == 0L)
+                return checkHeadHeight( createHead( maxHeight ), maxHeight );
+            else
+                return checkHeadHeight( loadHead(), maxHeight );
         }
 
-        public RecordFieldSerializer<V> getValueSerializer()
+        private SkipListStoreRecord<K, V> checkHeadHeight( SkipListStoreRecord<K, V> head, int maxHeight )
         {
-            return valueSerializer;
+            if ( head.getHeight() != maxHeight )
+                throw new InvalidRecordException(
+                        "Expected head of height: " + maxHeight + " but found: " + head.getHeight() );
+
+            return head;
         }
 
-        Collection<DynamicRecord> allocateDynamicRecords( SkipListStoreRecord<K, V> record )
+        private SkipListStoreRecord<K, V> createHead( int height )
         {
-            RecordSerializer serializer = new RecordSerializer();
-            serializer = serializer.append( record );
-            byte[] buffer = serializer.serialize( growableBytes );
-            return allocateRecordsFromBytes( buffer, asIterator( forceGetRecord( record.getId() ) ) );
+            if ( HEAD_ID != nextId() )
+                throw
+                    new ThisShouldNotHappenError( "Stefan", "Attempt to create new head in non-empty skip list store" );
+
+            return new SkipListStoreRecord<K, V>( new long[ height ], SkipListRecordState.CREATED );
         }
 
-        Collection<DynamicRecord> loadDynamicRecords( long id )
+        SkipListStoreRecord<K, V> createRecordWithHeight( int height, K key, V value )
+        {
+            long id = nextId();
+            if ( HEAD_ID == id )
+                throw
+                    new ThisShouldNotHappenError( "Stefan", "Attempt to recreate skip list head record" );
+
+            return
+                new SkipListStoreRecord<K, V>( id, key, value, new long[ height ], SkipListRecordState.CREATED );
+        }
+
+
+        private ByteBuffer serializeRecord( SkipListStoreRecord<K, V> record )
+        {
+            int requiredLength = computeRequiredLength( record );
+            ByteBuffer buffer = growableBytes.getAsWrappedBuffer( requiredLength );
+            serializeRecord( record, buffer );
+            return buffer;
+        }
+
+        private int computeRequiredLength( SkipListStoreRecord<K, V> record )
+        {
+            if ( record.isHead() )
+                return 1 + record.getHeight() * 8;
+            else
+                return 1 + record.getHeight() * 8
+                         + keySerializer.computeSerializedLength( record.getKey() )
+                         + valueSerializer.computeSerializedLength( record.getValue() );
+        }
+
+        private void serializeRecord( SkipListStoreRecord<K, V> record, ByteBuffer target )
+        {
+            if ( ! record.isHead() )
+            {
+                keySerializer.serialize( record.getKey(), target );
+                valueSerializer.serialize( record.getValue(), target );
+            }
+            int height = record.getHeight();
+            target.put( (byte) height );
+            for (int i = 0; i < height; i++)
+                target.putLong( record.getNext( i ) );
+        }
+
+
+        private SkipListStoreRecord<K, V> loadHead()
+        {
+            Collection<DynamicRecord> dynRecords = loadDynamicRecords( HEAD_ID );
+            ByteBuffer dynBuffer = concatData( dynRecords, growableBytes );
+            long[] nexts = readNexts( dynBuffer );
+            return new SkipListStoreLoadedRecord<K, V>( nexts, dynRecords );
+        }
+
+        SkipListStoreRecord<K, V> loadRecord( long id )
+        {
+            Collection<DynamicRecord> dynRecords = loadDynamicRecords( id );
+            ByteBuffer dynBuffer = concatData( dynRecords, growableBytes );
+            K key = keySerializer.deSerialize( dynBuffer );
+            V value = valueSerializer.deSerialize( dynBuffer );
+            long[] nexts = readNexts( dynBuffer );
+            return new SkipListStoreLoadedRecord<K, V>( id, key, value, nexts, dynRecords );
+        }
+
+        private long[] readNexts( ByteBuffer dynBuffer )
+        {
+            int height = dynBuffer.get();
+            long[] nexts = new long[ height ];
+            for ( int i = 0; i < height; i++ )
+                nexts[ i ] = dynBuffer.getLong();
+            return nexts;
+        }
+
+        void storeRecord( SkipListStoreRecord<K, V> record )
+        {
+            SkipListRecordState dynState = record.getDynState();
+            Collection<DynamicRecord> dynRecords = record.getDynRecords();
+            if ( dynState.isOutdated )
+            {
+                if ( SkipListRecordState.REMOVED.equals( dynState ) )
+                {
+                    if ( dynRecords == null )
+                        return;
+                    else
+                    {
+                        for ( DynamicRecord dynRecord : dynRecords )
+                            dynRecord.setInUse( false );
+                    }
+                }
+                else
+                {
+                    if ( dynRecords == null )
+                        dynRecords = allocateDynamicRecords( record, asIterator( forceGetRecord( record.getId() ) ) );
+                    else
+                        dynRecords = updateDynamicRecords( record, dynRecords.iterator() );
+                }
+            }
+
+            if ( dynState.shouldWrite )
+                storeDynamicRecords( dynRecords.iterator() );
+        }
+
+        private Collection<DynamicRecord> allocateDynamicRecords( SkipListStoreRecord<K, V> record,
+                                                                  Iterator<DynamicRecord> dynRecordSupply )
+        {
+            ByteBuffer buffer = serializeRecord( record );
+            int srcOffset = buffer.arrayOffset();
+            int srcLimit = srcOffset + buffer.limit();
+            return allocateRecordsFromBytes( buffer.array(), srcOffset, srcLimit, dynRecordSupply );
+        }
+
+
+        private Collection<DynamicRecord> loadDynamicRecords( long id )
         {
             List<DynamicRecord> records = getRecords( id );
             if ( !records.get( 0 ).isStartRecord() )
@@ -134,210 +246,20 @@ public class SkipListStore<K, V>
             return records;
         }
 
-        Collection<DynamicRecord> updateDynamicRecords( SkipListStoreRecord<K, V> record,
-                                                        Iterator<DynamicRecord> dynRecordSupply )
+        private Collection<DynamicRecord> updateDynamicRecords( SkipListStoreRecord<K, V> record,
+                                                                Iterator<DynamicRecord> dynRecordSupply )
         {
-            RecordSerializer serializer = new RecordSerializer();
-            serializer = serializer.append( record );
-            byte[] buffer = serializer.serialize( growableBytes );
-            Collection<DynamicRecord> result = allocateRecordsFromBytes( buffer, dynRecordSupply );
+            Collection<DynamicRecord> result = allocateDynamicRecords( record, dynRecordSupply );
             while ( dynRecordSupply.hasNext() )
                 dynRecordSupply.next().setInUse( false );
             return result;
         }
 
-
-        ByteBuffer concatDynamicRecords( Collection<DynamicRecord> records )
-        {
-            return concatData( records, growableBytes );
-        }
-
-        void writeDynamicRecords( Iterator<DynamicRecord> iterator )
+        private void storeDynamicRecords( Iterator<DynamicRecord> iterator )
         {
             while ( iterator.hasNext() )
                 updateRecord( iterator.next() );
         }
     }
 
-    private class Cabinet extends SkipListCabinetBase<SkipListStoreRecord<K, V>, K, V>
-    {
-        private final LevelGenerator levelGenerator;
-
-        private final Map<Long, SkipListStoreRecord<K, V>> records = new HashMap<Long, SkipListStoreRecord<K, V>>();
-        private final StoreView storeView;
-        private final SkipListStoreRecord<K, V> head;
-
-        public Cabinet( LevelGenerator levelGenerator, StoreView storeView )
-        {
-            super( levelGenerator.getMaxHeight() );
-            this.levelGenerator = levelGenerator;
-            this.storeView = storeView;
-
-            int maxHeight = getMaxHeight();
-            long highId = getHighestPossibleIdInUse();
-            if (highId == 0L)
-                head = new SkipListStoreRecord<K, V>( storeView, nextId(), maxHeight );
-            else
-                head = loadRecordOrHead( HEAD_ID );
-
-            int height = head.getHeight();
-            if ( height != maxHeight )
-                throw new InvalidRecordException(
-                        "Expected head of height: " + maxHeight + " but found: " + height );
-
-            if ( ! head.isHead() )
-                throw new ThisShouldNotHappenError( "Stefan", "new skip list head is not a head record" );
-        }
-
-        @Override
-        protected void onClose()
-        {
-            // TODO: Find out if we need to iterate in order of ids here
-            head.write();
-            for ( SkipListStoreRecord<K, V> record : records.values() )
-                record.write();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public SkipListStoreRecord<K, V>[] newVisitationArray()
-        {
-            return (SkipListStoreRecord<K, V>[]) Array.newInstance( SkipListStoreRecord.class, getMaxHeight() );
-        }
-
-        @Override
-        public SkipListStoreRecord<K, V> nil()
-        {
-            return null;
-        }
-
-        @Override
-        public SkipListStoreRecord<K, V> getHead()
-        {
-            assertOpen();
-            return head;
-        }
-
-        @Override
-        public boolean isNil( SkipListStoreRecord<K, V> record )
-        {
-            return null == record;
-        }
-
-        @Override
-        public boolean isHead( SkipListStoreRecord<K, V> record )
-        {
-            assertOpen();
-            return ! isNil( record ) && record.isHead();
-        }
-
-        @Override
-        public int newRandomLevel()
-        {
-            return levelGenerator.newLevel();
-        }
-
-        @Override
-        public SkipListStoreRecord<K, V> createRecordWithHeight( int height, K key, V value )
-        {
-            assertOpen();
-            long id = nextId();
-            SkipListStoreRecord<K, V> record = new SkipListStoreRecord<K, V>( storeView, id, height, key, value );
-            records.put( id, record );
-            return record;
-        }
-
-        @Override
-        public void removeRecord( SkipListStoreRecord<K, V> record )
-        {
-            assertOpen();
-            if ( isNil( record ) )
-                throw new InvalidRecordException( "Cannot remove nil()" );
-            else
-                record.setRemoved();
-        }
-
-        @Override
-        public boolean areSameRecord( SkipListStoreRecord<K, V> first, SkipListStoreRecord<K, V> second )
-        {
-            if ( first == second )
-                return true;
-            if ( first == null )
-                return false;
-            if ( second == null )
-                return false;
-            return first.getId() == second.getId();
-        }
-
-        @Override
-        public K getRecordKey( SkipListStoreRecord<K, V> record )
-        {
-            assertOpen();
-            return record.getKey();
-        }
-
-        @Override
-        public V getRecordValue( SkipListStoreRecord<K, V> record )
-        {
-            assertOpen();
-            return record.getValue();
-        }
-
-        @Override
-        public int getHeight( SkipListStoreRecord<K, V> record )
-        {
-            assertOpen();
-            return record.getHeight();
-        }
-
-        @Override
-        public SkipListStoreRecord<K, V> getNext( SkipListStoreRecord<K, V> record, int level )
-        {
-            assertOpen();
-            return loadRecord( record.getNext( level) );
-        }
-
-        @Override
-        public void setNext( SkipListStoreRecord<K, V> record, int level, SkipListStoreRecord<K, V> newNext )
-        {
-            assertOpen();
-            if ( isNil( newNext ))
-                record.setNext( level, 0 );
-            else
-                record.setNext( level, newNext.getId() );
-        }
-
-        @Override
-        public SkipListCabinet<SkipListStoreRecord<K, V>, K, V> reopen()
-        {
-            close();
-            return new Cabinet( levelGenerator, storeView );
-        }
-
-        private SkipListStoreRecord<K, V> loadRecord( long id )
-        {
-            if ( 0L == id )
-                return nil();
-
-            if ( HEAD_ID == id )
-                throw new ThisShouldNotHappenError( "Stefan", "Attempt to load head via pointer" );
-
-            return loadRecordOrHead( id );
-        }
-
-        private SkipListStoreRecord<K, V> loadRecordOrHead( long id )
-        {
-            SkipListStoreRecord<K, V> record = records.get( id );
-            if ( record == null )
-            {
-                Collection<DynamicRecord> dynRecords = storeView.loadDynamicRecords( id );
-                ByteBuffer dynBuffer = storeView.concatDynamicRecords( dynRecords );
-                record = new SkipListStoreRecord<K, V>( storeView, id, dynBuffer, dynRecords );
-                records.put( id, record );
-            }
-
-            record.assertNotRemoved();
-            return record;
-        }
-    }
 }

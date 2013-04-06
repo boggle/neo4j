@@ -21,11 +21,30 @@ public class GrowableByteArray
 
     public byte[] get( int requiredLength )
     {
-        if ( byteArray == null || byteArray.length < requiredLength )
+        grow( requiredLength );
+        return byteArray;
+    }
+
+    public void grow( int requiredLength )
+    {
+        if ( requiredLength < 1 )
+            throw new IllegalArgumentException( "required length must be > 0 " );
+
+        if ( byteArray == null )
         {
             byteArray = new byte[ requiredLength ];
         }
-        return byteArray;
+        else if ( byteArray.length < requiredLength )
+        {
+            byteArray = new byte[ requiredLength ];
+        }
+    }
+
+    public int getLength()
+    {
+        if ( byteArray == null)
+            throw new IllegalStateException( "Empty growable byte array does not have a length" );
+        return byteArray.length;
     }
 
     public ByteBuffer getAsWrappedBuffer( int requiredLength )
@@ -33,3 +52,4 @@ public class GrowableByteArray
         return ByteBuffer.wrap( get( requiredLength ) );
     }
 }
+

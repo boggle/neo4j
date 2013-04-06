@@ -215,8 +215,15 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
     {
         return allocateRecordsFromBytes( src, Collections.<DynamicRecord>emptyList().iterator() );
     }
-    
-    protected Collection<DynamicRecord> allocateRecordsFromBytes( byte src[], Iterator<DynamicRecord> recordsToUseFirst )
+
+    protected Collection<DynamicRecord> allocateRecordsFromBytes( byte src[],
+                                                                  Iterator<DynamicRecord> recordsToUseFirst )
+    {
+        return allocateRecordsFromBytes( src, 0, src.length, recordsToUseFirst );
+    }
+
+    protected Collection<DynamicRecord> allocateRecordsFromBytes( byte src[], int srcOffset, int limit,
+                                                                  Iterator<DynamicRecord> recordsToUseFirst )
     {
         assert getFileChannel() != null : "Store closed, null file channel";
         assert src != null : "Null src argument";
@@ -239,7 +246,7 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
             }
             else
             {
-                byte data[] = new byte[src.length - srcOffset];
+                byte data[] = new byte[limit - srcOffset];
                 System.arraycopy( src, srcOffset, data, 0, data.length );
                 record.setData( data );
                 nextRecord = null;

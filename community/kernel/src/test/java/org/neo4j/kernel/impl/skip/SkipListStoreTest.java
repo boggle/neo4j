@@ -23,11 +23,11 @@ public class SkipListStoreTest extends GenericSkipListAccessorTest<SkipListStore
     private Config config;
     private EphemeralFileSystemAbstraction fileSystemAbstraction;
     private SkipListStore<Long, String> cabinetProvider;
+    private File skipListStoreFile = new File( "skip-list-store.skip.db" );
 
     @Override
     protected SkipListAccessor<SkipListStoreRecord<Long, String>, Long, String> createAccessor( )
     {
-        File file = new File( "skip-list-store.skip.db" );
         DefaultIdGeneratorFactory idGeneratorFactory = new DefaultIdGeneratorFactory();
         DefaultWindowPoolFactory windowPoolFactory = new DefaultWindowPoolFactory();
         StringLogger stringLogger = StringLogger.SYSTEM;
@@ -36,13 +36,13 @@ public class SkipListStoreTest extends GenericSkipListAccessorTest<SkipListStore
 
         IdType idType = IdType.NODE_LABELS;
         factory.createEmptyDynamicStore(
-                file,
+                skipListStoreFile,
                 SkipListStore.BLOCK_SIZE,
                 SkipListStore.VERSION,
                 idType );
 
         cabinetProvider  = new SkipListStore<Long, String>(
-                file,
+                skipListStoreFile,
                 config,
                 idType,
                 idGeneratorFactory,
@@ -53,6 +53,12 @@ public class SkipListStoreTest extends GenericSkipListAccessorTest<SkipListStore
                 RecordFieldSerializer.STRING );
 
         return new SkipListAccessor<SkipListStoreRecord<Long, String>, Long, String>( cabinetProvider );
+    }
+
+    @Override
+    protected long getStorageUsed()
+    {
+        return fileSystemAbstraction.getFileSize( skipListStoreFile );
     }
 
     @Before

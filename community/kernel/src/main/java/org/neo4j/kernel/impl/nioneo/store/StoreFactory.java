@@ -60,6 +60,8 @@ public class StoreFactory
     private final TxHook txHook;
     
     public static final String LABELS_PART = ".labels";
+    public static final String RELATIONSHIP_STORE_NAME = ".relationshipstore.db";
+    public static final String RELATIONSHIP_TYPE_STORE_NAME = ".relationshiptypestore.db";
     public static final String NAMES_PART = ".names";
     public static final String INDEX_PART = ".index";
     public static final String KEYS_PART = ".keys";
@@ -153,9 +155,9 @@ public class StoreFactory
                 fileSystemAbstraction, stringLogger );
     }
     
-    public LabelStore newLabelStore( File file )
+    public LabelScanStore newLabelStore( File file )
     {
-        return new LabelStore( file, config, IdType.NODE_LABELS, idGeneratorFactory, windowPoolFactory,
+        return new LabelScanStore( file, config, IdType.NODE_LABELS, idGeneratorFactory, windowPoolFactory,
                 fileSystemAbstraction, stringLogger );
     }
 
@@ -360,9 +362,9 @@ public class StoreFactory
         createEmptyDynamicStore( fileName, SchemaStore.BLOCK_SIZE, SchemaStore.VERSION, IdType.SCHEMA );
     }
 
-    public void createLabelStore( File fileName )
+    public void createLabelScanStore( File fileName )
     {
-        createEmptyDynamicStore( fileName, SkipListIndexStore.BLOCK_SIZE, LabelStore.VERSION, IdType.NODE_LABELS );
+        createEmptyDynamicStore( fileName, LabelScanStore.BLOCK_SIZE, LabelScanStore.VERSION, IdType.NODE_LABELS );
     }
 
     /**

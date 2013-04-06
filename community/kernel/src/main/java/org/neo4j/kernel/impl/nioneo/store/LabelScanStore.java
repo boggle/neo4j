@@ -25,19 +25,22 @@ import org.neo4j.kernel.IdGeneratorFactory;
 import org.neo4j.kernel.IdType;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.nioneo.store.windowpool.WindowPoolFactory;
+import org.neo4j.kernel.impl.skip.store.SkipListStore;
 import org.neo4j.kernel.impl.util.StringLogger;
 
-public class LabelStore extends SkipListIndexStore<Long, Long> {
+public class LabelScanStore extends SkipListStore<Long, Long>
+{
+    public static final String TYPE_DESCRIPTOR = "LabelScanStore";
 
     // store version, each store ends with this string (byte encoded)
-    public static final String TYPE_DESCRIPTOR = "LabelStore";
     public static final String VERSION = buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR );
 
-    public LabelStore( File fileName, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory,
-                          WindowPoolFactory windowPoolFactory, FileSystemAbstraction fileSystemAbstraction,
-                          StringLogger stringLogger )
+    public LabelScanStore( File fileName, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory,
+                           WindowPoolFactory windowPoolFactory, FileSystemAbstraction fileSystemAbstraction,
+                           StringLogger stringLogger )
     {
-        super( fileName, conf, idType, idGeneratorFactory, windowPoolFactory, fileSystemAbstraction, stringLogger );
+        super( fileName, conf, idType, idGeneratorFactory, windowPoolFactory, fileSystemAbstraction, stringLogger,
+               RecordFieldSerializer.LONG, RecordFieldSerializer.LONG );
     }
 
     @Override
