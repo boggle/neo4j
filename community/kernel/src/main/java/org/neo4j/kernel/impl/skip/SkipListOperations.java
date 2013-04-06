@@ -51,14 +51,16 @@ public interface SkipListOperations<R, K, V>
 
     // int countAll( SkipListOperations<R, K, V> cabinetIn, K key );
 
-    <I> ResourceIterator<I> findAll( SkipListCabinet<R, K, V> cabinetIn,
+    <I> ResourceIterator<I> findAll( SkipListCabinet<R, K, V> cabinet,
                                      Function2<SkipListCabinet<R, K, V>, R, I> resultFun,  K key, V value );
 
-    <I> ResourceIterator<I> findAll( SkipListCabinet<R, K, V> cabinetIn,
+    <I> ResourceIterator<I> findAll( SkipListCabinet<R, K, V> cabinet,
                                      Function2<SkipListCabinet<R, K, V>, R, I> resultFun,  K key );
 
-    <I> ResourceIterator<I> findAll( SkipListCabinet<R, K, V> cabinetIn,
+    <I> ResourceIterator<I> findAll( SkipListCabinet<R, K, V> cabinet,
                                      Function2<SkipListCabinet<R, K, V>, R, I> resultFun  );
+
+    ResourceIterator<V> findIntersectingValues( SkipListCabinet<R, K, V> cabinet, K... keys );
 
     R findFirst( SkipListCabinet<R, K, V> cabinet, K key, V value );
 

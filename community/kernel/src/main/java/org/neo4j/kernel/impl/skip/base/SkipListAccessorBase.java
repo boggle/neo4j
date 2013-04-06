@@ -19,9 +19,13 @@
  */
 package org.neo4j.kernel.impl.skip.base;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.helpers.Function2;
 import org.neo4j.helpers.Predicate;
+import org.neo4j.helpers.collection.IteratorUtil;
 import org.neo4j.kernel.impl.skip.LevelGenerator;
 import org.neo4j.kernel.impl.skip.SkipListCabinet;
 import org.neo4j.kernel.impl.skip.SkipListCabinetProvider;
@@ -279,6 +283,23 @@ public abstract class SkipListAccessorBase<R, K, V>
                 return ! cabinet.isNil( record );
             }
         }, resultFun);
+    }
+
+
+    @Override
+    public ResourceIterator<V> findIntersectingValues( SkipListCabinet<R, K, V> cabinet, K... keys )
+    {
+        // released by iterator
+        cabinet.acquire();
+
+        Collection<ResourceIterator<V>> iterators = new ArrayList<ResourceIterator<V>>( keys.length );
+        for ( int i = 0; i < keys.length; i++ )
+        {
+            K key = keys[i];
+           iterators.add( findAll( cabinet, returnValues(), key ) );
+        }
+
+        return new SkipListJoinIterator<R, K ,V>( cabinet, iterators );
     }
 
     /**
