@@ -35,11 +35,11 @@ public class LabelScanStore extends SkipListStore<Long, Long>
     // store version, each store ends with this string (byte encoded)
     public static final String VERSION = buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR );
 
-    public LabelScanStore( File fileName, Config conf, IdType idType, IdGeneratorFactory idGeneratorFactory,
+    public LabelScanStore( File fileName, Config conf, IdGeneratorFactory idGeneratorFactory,
                            WindowPoolFactory windowPoolFactory, FileSystemAbstraction fileSystemAbstraction,
                            StringLogger stringLogger )
     {
-        super( fileName, conf, idType, idGeneratorFactory, windowPoolFactory, fileSystemAbstraction, stringLogger,
+        super( fileName, conf, IdType.LABEL_SCAN, idGeneratorFactory, windowPoolFactory, fileSystemAbstraction, stringLogger,
                RecordFieldSerializer.LONG, RecordFieldSerializer.LONG );
     }
 

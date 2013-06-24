@@ -22,7 +22,6 @@ package org.neo4j.kernel.impl.skip.base;
 import java.util.NoSuchElementException;
 
 import org.neo4j.graphdb.ResourceIterator;
-import org.neo4j.helpers.Function;
 import org.neo4j.helpers.Function2;
 import org.neo4j.helpers.Predicate;
 import org.neo4j.kernel.impl.skip.SkipListCabinet;
@@ -41,24 +40,36 @@ public class SkipListIterator<R, K, V, I> implements ResourceIterator<I>
     private R next;
     private boolean hasNext;
 
-    public static <R, K, V> Function2<SkipListCabinet<R, K, V>, R, R> returnRecords() {
-        return new Function2<SkipListCabinet<R, K, V>, R, R>() {
-            @Override
-            public R apply( SkipListCabinet<R, K, V> cabinet, R entry )
-            {
-                return entry;
-            }
-        };
+    @SuppressWarnings( "rawtypes" )
+    private static final Function2 FUNCTION_RECORDS = new Function2()
+    {
+        @Override
+        public Object apply( Object cabinet, Object entry )
+        {
+            return entry;
+        }
+    };
+    
+    @SuppressWarnings( "unchecked" )
+    public static <R, K, V> Function2<SkipListCabinet<R, K, V>, R, R> returnRecords()
+    {
+        return FUNCTION_RECORDS;
     }
+    
+    private static final Function2 FUNCTION_RECORD_VALUES = new Function2()
+    {
+        @SuppressWarnings( { "unchecked", "rawtypes" } )
+        @Override
+        public Object apply( Object cabinet, Object entry )
+        {
+            return ((SkipListCabinet) cabinet).getRecordValue( entry );
+        }
+    };
 
-    public static <R, K, V> Function2<SkipListCabinet<R, K, V>, R, V> returnValues() {
-        return new Function2<SkipListCabinet<R, K, V>, R, V>() {
-            @Override
-            public V apply( SkipListCabinet<R, K, V> cabinet, R entry )
-            {
-                return cabinet.getRecordValue( entry );
-            }
-        };
+    @SuppressWarnings( "unchecked" )
+    public static <R, K, V> Function2<SkipListCabinet<R, K, V>, R, V> returnValues()
+    {
+        return FUNCTION_RECORD_VALUES;
     }
 
     public SkipListIterator( SkipListCabinet<R, K, V> cabinet, R next,
@@ -101,6 +112,7 @@ public class SkipListIterator<R, K, V, I> implements ResourceIterator<I>
         }
     }
 
+    @Override
     public void close()
     {
         if ( hasNext )

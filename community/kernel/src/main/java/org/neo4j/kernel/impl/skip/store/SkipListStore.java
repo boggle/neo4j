@@ -19,13 +19,12 @@
  */
 package org.neo4j.kernel.impl.skip.store;
 
-import static org.neo4j.helpers.collection.IteratorUtil.asIterator;
-
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 
 import org.neo4j.helpers.ThisShouldNotHappenError;
 import org.neo4j.kernel.IdGeneratorFactory;
@@ -42,6 +41,8 @@ import org.neo4j.kernel.impl.skip.LevelGenerator;
 import org.neo4j.kernel.impl.skip.SkipListCabinetProvider;
 import org.neo4j.kernel.impl.skip.base.RandomLevelGenerator;
 import org.neo4j.kernel.impl.util.StringLogger;
+
+import static org.neo4j.helpers.collection.IteratorUtil.asIterator;
 
 public class SkipListStore<K, V>
         extends AbstractDynamicStore
@@ -96,6 +97,11 @@ public class SkipListStore<K, V>
         return new RandomLevelGenerator( H_MAX, P_BITS );
     }
 
+    public static final LevelGenerator newDefaultLevelGenerator( Random random )
+    {
+        return new RandomLevelGenerator( random, H_MAX, P_BITS );
+    }
+    
     class StoreView
     {
         private final GrowableByteArray growableBytes = new GrowableByteArray(  );
@@ -200,8 +206,8 @@ public class SkipListStore<K, V>
 
         void storeRecord( SkipListStoreRecord<K, V> record )
         {
-            SkipListRecordState dynState = record.getDynState();
-            Collection<DynamicRecord> dynRecords = record.getDynRecords();
+            SkipListRecordState dynState = record.getRecordState();
+            Collection<DynamicRecord> dynRecords = record.getDynamicRecords();
             if ( dynState.isOutdated )
             {
                 if ( SkipListRecordState.REMOVED.equals( dynState ) )

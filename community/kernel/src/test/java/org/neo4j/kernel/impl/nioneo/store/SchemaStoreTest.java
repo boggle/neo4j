@@ -27,13 +27,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-
 import org.neo4j.kernel.DefaultIdGeneratorFactory;
 import org.neo4j.kernel.DefaultTxHook;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.test.EphemeralFileSystemRule;
 
 import static java.nio.ByteBuffer.wrap;
+
 import static org.junit.Assert.assertEquals;
 import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
 import static org.neo4j.helpers.collection.IteratorUtil.first;
@@ -52,7 +52,7 @@ public class SchemaStoreTest
         IndexRule indexRule = IndexRule.indexRule( store.nextId(), labelId, propertyKey, PROVIDER_DESCRIPTOR );
         
         // WHEN
-        byte[] serialized = new RecordSerializer().append( indexRule ).serialize();
+        byte[] serialized = new RecordSerializer().append( indexRule ).serialize( new GrowableByteArray() );
         IndexRule readIndexRule = (IndexRule) SchemaRule.Kind.deserialize( indexRule.getId(), wrap( serialized ) );
         
         // THEN

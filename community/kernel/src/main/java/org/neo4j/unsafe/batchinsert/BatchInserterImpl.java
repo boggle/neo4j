@@ -74,6 +74,7 @@ import org.neo4j.kernel.impl.index.IndexStore;
 import org.neo4j.kernel.impl.nioneo.store.DefaultWindowPoolFactory;
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
 import org.neo4j.kernel.impl.nioneo.store.FileSystemAbstraction;
+import org.neo4j.kernel.impl.nioneo.store.GrowableByteArray;
 import org.neo4j.kernel.impl.nioneo.store.IdGeneratorImpl;
 import org.neo4j.kernel.impl.nioneo.store.IndexRule;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
@@ -108,6 +109,7 @@ import org.neo4j.kernel.impl.util.StringLogger;
 import org.neo4j.kernel.lifecycle.LifeSupport;
 
 import static java.lang.Boolean.parseBoolean;
+
 import static org.neo4j.graphdb.DynamicLabel.label;
 import static org.neo4j.helpers.collection.Iterables.map;
 import static org.neo4j.helpers.collection.IteratorUtil.asIterable;
@@ -134,6 +136,7 @@ public class BatchInserterImpl implements BatchInserter
     private final SchemaCache schemaCache;
     private final Config config;
     private boolean isShutdown = false;
+    private final GrowableByteArray scratchBytes = new GrowableByteArray();
 
     private final Function<Long, Label> labelIdToLabelFunction = new Function<Long, Label>()
     {
@@ -285,7 +288,7 @@ public class BatchInserterImpl implements BatchInserter
                                                     getOrCreatePropertyKeyId( propertyKey ),
                                                     this.schemaIndexProviders.getDefaultProvider()
                                                                              .getProviderDescriptor() );
-        for ( DynamicRecord record : schemaStore.allocateFrom( schemaRule ) )
+        for ( DynamicRecord record : schemaStore.allocateFrom( schemaRule, scratchBytes ) )
         {
             schemaStore.updateRecord( record );
         }
@@ -403,12 +406,12 @@ public class BatchInserterImpl implements BatchInserter
         UniquenessConstraintRule constraintRule = UniquenessConstraintRule.uniquenessConstraintRule(
                 schemaStore.nextId(), constraint.label(), constraint.property(), indexRuleId );
 
-        for ( DynamicRecord record : schemaStore.allocateFrom( constraintRule ) )
+        for ( DynamicRecord record : schemaStore.allocateFrom( constraintRule, scratchBytes ) )
         {
             schemaStore.updateRecord( record );
         }
         schemaCache.addSchemaRule( constraintRule );
-        for ( DynamicRecord record : schemaStore.allocateFrom( indexRule ) )
+        for ( DynamicRecord record : schemaStore.allocateFrom( indexRule, scratchBytes ) )
         {
             schemaStore.updateRecord( record );
         }

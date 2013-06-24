@@ -46,5 +46,4 @@ public abstract class SkipListRecordBase<K, V>
     }
 
     public abstract int getHeight();
-
 }

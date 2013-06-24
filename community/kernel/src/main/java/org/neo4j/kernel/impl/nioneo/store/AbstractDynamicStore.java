@@ -229,7 +229,6 @@ public abstract class AbstractDynamicStore extends CommonAbstractStore implement
         assert src != null : "Null src argument";
         List<DynamicRecord> recordList = new LinkedList<DynamicRecord>();
         DynamicRecord nextRecord = nextUsedRecordOrNew( recordsToUseFirst );
-        int srcOffset = 0;
         int dataSize = getBlockSize() - BLOCK_HEADER_SIZE;
         do
         {

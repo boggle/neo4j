@@ -51,8 +51,8 @@ import org.neo4j.kernel.impl.core.Token;
 import org.neo4j.kernel.impl.core.TransactionState;
 import org.neo4j.kernel.impl.nioneo.store.AbstractDynamicStore;
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
-import org.neo4j.kernel.impl.nioneo.store.IndexRule;
 import org.neo4j.kernel.impl.nioneo.store.GrowableByteArray;
+import org.neo4j.kernel.impl.nioneo.store.IndexRule;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenRecord;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenStore;
@@ -206,7 +206,6 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     private XaConnection xaConnection;
     private final CacheAccessBackDoor cacheAccess;
     private final IndexingService indexes;
-
     private final GrowableByteArray scratchBytes = new GrowableByteArray();
 
     WriteTransaction( int identifier, XaLogicalLog log, TransactionState state, NeoStore neoStore,
@@ -2045,7 +2044,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     @Override
     public void createSchemaRule( SchemaRule schemaRule )
     {
-        Collection<DynamicRecord> records = getSchemaStore().allocateFrom( schemaRule );
+        Collection<DynamicRecord> records = getSchemaStore().allocateFrom( schemaRule, scratchBytes );
         addSchemaRule( Pair.of( records, schemaRule ) );
     }
 
@@ -2110,6 +2109,6 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                  pair.other() :
                  deserializeSchemaRule( constraintIndexId, getSchemaStore().getRecords( constraintIndexId ) ));
         indexRule = indexRule.withOwningConstraint( constraintId );
-        addSchemaRule( Pair.of( getSchemaStore().allocateFrom( indexRule ), (SchemaRule) indexRule ) );
+        addSchemaRule( Pair.of( getSchemaStore().allocateFrom( indexRule, scratchBytes ), (SchemaRule) indexRule ) );
     }
 }

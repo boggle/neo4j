@@ -24,16 +24,11 @@ import org.neo4j.graphdb.Transaction;
 
 public class BatchTransaction
 {
-    private static final int MAX_SIZE = 10000;
+    private static final int DEFAULT_BATCH_SIZE = 10000;
 
     public static BatchTransaction beginBatchTx( GraphDatabaseService db )
     {
-        return new BatchTransaction( db, MAX_SIZE );
-    }
-    
-    public static BatchTransaction beginBatchTx( GraphDatabaseService db, int maxSize )
-    {
-        return new BatchTransaction( db, maxSize );
+        return new BatchTransaction( db, DEFAULT_BATCH_SIZE );
     }
     
     private final GraphDatabaseService db;
@@ -41,12 +36,12 @@ public class BatchTransaction
     private int txSize;
     private int total;
     private boolean printProgress;
-    private final int maxSize;
+    private int batchSize;
     
-    private BatchTransaction( GraphDatabaseService db, int maxSize )
+    private BatchTransaction( GraphDatabaseService db, int batchSize )
     {
         this.db = db;
-        this.maxSize = maxSize;
+        this.batchSize = batchSize;
         beginTx();
     }
 
@@ -65,11 +60,14 @@ public class BatchTransaction
         return increment( 1 );
     }
     
+    /**
+     * @return {@code true} if the tx was restarted.
+     */
     public boolean increment( int count )
     {
         txSize += count;
         total++;
-        if ( txSize >= MAX_SIZE )
+        if ( txSize >= batchSize )
         {
             if ( printProgress )
             {
@@ -102,7 +100,7 @@ public class BatchTransaction
     
     public int limit()
     {
-        return MAX_SIZE;
+        return DEFAULT_BATCH_SIZE;
     }
     
     public int total()
@@ -110,8 +108,15 @@ public class BatchTransaction
         return total;
     }
     
-    public void printProgress( boolean value )
+    public BatchTransaction printProgress( boolean value )
     {
         printProgress = value;
+        return this;
+    }
+    
+    public BatchTransaction batchSize( int batchSize )
+    {
+        this.batchSize = batchSize;
+        return this;
     }
 }

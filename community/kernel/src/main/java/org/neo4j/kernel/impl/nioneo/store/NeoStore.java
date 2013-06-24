@@ -73,6 +73,7 @@ public class NeoStore extends AbstractStore
     private RelationshipTypeTokenStore relTypeStore;
     private LabelTokenStore labelTokenStore;
     private SchemaStore schemaStore;
+    private LabelScanStore labelScanStore;
     private final TxHook txHook;
     private long lastCommittedTx = -1;
 
@@ -84,7 +85,7 @@ public class NeoStore extends AbstractStore
                      StringLogger stringLogger, TxHook txHook,
                      RelationshipTypeTokenStore relTypeStore, LabelTokenStore labelTokenStore,
                      PropertyStore propStore, RelationshipStore relStore,
-                     NodeStore nodeStore, SchemaStore schemaStore )
+                     NodeStore nodeStore, SchemaStore schemaStore, LabelScanStore labelScanStore )
     {
         super( fileName, conf, IdType.NEOSTORE_BLOCK, idGeneratorFactory, windowPoolFactory,
                 fileSystemAbstraction, stringLogger);
@@ -94,6 +95,7 @@ public class NeoStore extends AbstractStore
         this.relStore = relStore;
         this.nodeStore = nodeStore;
         this.schemaStore = schemaStore;
+        this.labelScanStore = labelScanStore;
         REL_GRAB_SIZE = conf.get( Configuration.relationship_grab_size );
         this.txHook = txHook;
 
@@ -250,13 +252,18 @@ public class NeoStore extends AbstractStore
             schemaStore.close();
             schemaStore = null;
         }
+        if ( labelScanStore != null )
+        {
+            labelScanStore.close();
+            labelScanStore = null;
+        }
     }
 
     @Override
     public void flushAll()
     {
         if ( relTypeStore == null || labelTokenStore == null || propStore == null || relStore == null ||
-                nodeStore == null || schemaStore == null )
+                nodeStore == null || schemaStore == null || labelScanStore == null )
         {
             return;
         }
@@ -267,6 +274,7 @@ public class NeoStore extends AbstractStore
         relStore.flushAll();
         nodeStore.flushAll();
         schemaStore.flushAll();
+        labelScanStore.flushAll();
     }
 
     @Override
@@ -412,6 +420,7 @@ public class NeoStore extends AbstractStore
             relTypeStore.setRecovered();
             labelTokenStore.setRecovered();
             schemaStore.setRecovered();
+            labelScanStore.setRecovered();
         }
         else
         {
@@ -422,6 +431,7 @@ public class NeoStore extends AbstractStore
             relTypeStore.unsetRecovered();
             labelTokenStore.unsetRecovered();
             schemaStore.unsetRecovered();
+            labelScanStore.unsetRecovered();
         }
     }
 
@@ -580,6 +590,7 @@ public class NeoStore extends AbstractStore
         relStore.makeStoreOk();
         nodeStore.makeStoreOk();
         schemaStore.makeStoreOk();
+        labelScanStore.makeStoreOk();
         super.makeStoreOk();
     }
 
@@ -592,6 +603,7 @@ public class NeoStore extends AbstractStore
         relStore.rebuildIdGenerators();
         nodeStore.rebuildIdGenerators();
         schemaStore.rebuildIdGenerators();
+        labelScanStore.rebuildIdGenerators();
         super.rebuildIdGenerators();
     }
 
@@ -604,6 +616,7 @@ public class NeoStore extends AbstractStore
         relStore.updateHighId();
         nodeStore.updateIdGenerators();
         schemaStore.updateHighId();
+        labelScanStore.updateHighId();
     }
 
     public int getRelationshipGrabSize()
@@ -640,7 +653,8 @@ public class NeoStore extends AbstractStore
     public boolean isStoreOk()
     {
         return getStoreOk() && relTypeStore.getStoreOk() && labelTokenStore.getStoreOk() &&
-            propStore.getStoreOk() && relStore.getStoreOk() && nodeStore.getStoreOk() && schemaStore.getStoreOk();
+            propStore.getStoreOk() && relStore.getStoreOk() && nodeStore.getStoreOk() && schemaStore.getStoreOk() &&
+            labelScanStore.getStoreOk();
     }
 
     @Override
@@ -739,5 +753,10 @@ public class NeoStore extends AbstractStore
             result[i] = (char) bits.getShort( 8 );
         }
         return new String( result );
+    }
+
+    public LabelScanStore getLabelScanStore()
+    {
+        return labelScanStore;
     }
 }

@@ -19,8 +19,6 @@
  */
 package org.neo4j.kernel.impl.skip;
 
-import java.util.Random;
-
 /**
  * Generates levels for newly inserted skip list records
  *

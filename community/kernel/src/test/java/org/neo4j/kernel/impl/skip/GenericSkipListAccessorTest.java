@@ -19,11 +19,6 @@
  */
 package org.neo4j.kernel.impl.skip;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,8 +32,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.neo4j.graphdb.ResourceIterator;
-import org.neo4j.kernel.impl.skip.base.RandomLevelGenerator;
 import org.neo4j.kernel.impl.skip.store.SkipListStore;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
 
 public abstract class GenericSkipListAccessorTest<R>
 {
@@ -385,7 +384,7 @@ public abstract class GenericSkipListAccessorTest<R>
         int numSkips    = 0;
         for ( int i = 0; i < numTries; i++ )
         {
-            long key = (long) random.nextInt( 100 );
+            long key = random.nextInt( 100 );
             if ( random.nextBoolean() )
             {
                 accessor.insertAlways( cabinet, key, values[ random.nextInt( 100 ) ] );

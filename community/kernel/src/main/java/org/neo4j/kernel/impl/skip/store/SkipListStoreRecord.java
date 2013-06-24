@@ -19,22 +19,22 @@
  */
 package org.neo4j.kernel.impl.skip.store;
 
-import static org.neo4j.kernel.impl.skip.store.SkipListStore.HEAD_ID;
-
 import java.util.Collection;
 
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
 import org.neo4j.kernel.impl.skip.base.SkipListRecordBase;
 
+import static org.neo4j.kernel.impl.skip.store.SkipListStore.HEAD_ID;
+
 public class SkipListStoreRecord<K, V> extends SkipListRecordBase<K, V>
 {
     private final long id;
     private final long[] nexts;
 
-    private transient SkipListRecordState dynState;
+    private transient SkipListRecordState recordState;
 
-    SkipListStoreRecord( long id, K key, V value, long[] nexts, SkipListRecordState dynState )
+    SkipListStoreRecord( long id, K key, V value, long[] nexts, SkipListRecordState recordState )
     {
         super( key, value );
         if ( id < HEAD_ID )
@@ -42,15 +42,15 @@ public class SkipListStoreRecord<K, V> extends SkipListRecordBase<K, V>
 
         this.id = id;
         this.nexts = nexts;
-        this.dynState = dynState;
+        this.recordState = recordState;
     }
 
-    SkipListStoreRecord( long[] nexts, SkipListRecordState dynState )
+    SkipListStoreRecord( long[] nexts, SkipListRecordState recordState )
     {
         super( null, null );
         this.id = HEAD_ID;
         this.nexts = nexts;
-        this.dynState = dynState;
+        this.recordState = recordState;
     }
 
     @Override
@@ -83,7 +83,7 @@ public class SkipListStoreRecord<K, V> extends SkipListRecordBase<K, V>
 
     void assertNotRemoved()
     {
-        if ( SkipListRecordState.REMOVED.equals( dynState ) )
+        if ( SkipListRecordState.REMOVED.equals( recordState ) )
             throw new InvalidRecordException( "Record with id " + id + " already has been removed" );
     }
 
@@ -102,15 +102,15 @@ public class SkipListStoreRecord<K, V> extends SkipListRecordBase<K, V>
     {
         assertNotRemoved();
         nexts[ level ] = id;
-        dynState = SkipListRecordState.OUTDATED;
+        recordState = SkipListRecordState.OUTDATED;
     }
 
-    SkipListRecordState getDynState()
+    SkipListRecordState getRecordState()
     {
-        return dynState;
+        return recordState;
     }
 
-    Collection<DynamicRecord> getDynRecords()
+    Collection<DynamicRecord> getDynamicRecords()
     {
         // intended, cf. SkipListStoreLoadedRecord
         return null;
@@ -121,6 +121,6 @@ public class SkipListStoreRecord<K, V> extends SkipListRecordBase<K, V>
         if ( isHead()  )
             throw new IllegalArgumentException( "Cannot remove head record" );
 
-        dynState = SkipListRecordState.REMOVED;
+        recordState = SkipListRecordState.REMOVED;
     }
 }

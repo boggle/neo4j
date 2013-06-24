@@ -109,7 +109,7 @@ public class WriteTransactionTest
         SchemaStore schemaStore = neoStore.getSchemaStore();
         long labelId = 10, propertyKey = 10;
         IndexRule rule = IndexRule.indexRule( schemaStore.nextId(), labelId, propertyKey, PROVIDER_DESCRIPTOR );
-        Collection<DynamicRecord> records = schemaStore.allocateFrom( rule );
+        Collection<DynamicRecord> records = schemaStore.allocateFrom( rule, scratchBytes );
         for ( DynamicRecord record : records )
             schemaStore.updateRecord( record );
         long ruleId = first( records ).getId();
@@ -624,6 +624,8 @@ public class WriteTransactionTest
             }
         };
     }
+    
+    private final GrowableByteArray scratchBytes = new GrowableByteArray();
 
     private void prepareAndCommit( WriteTransaction tx ) throws XAException
     {

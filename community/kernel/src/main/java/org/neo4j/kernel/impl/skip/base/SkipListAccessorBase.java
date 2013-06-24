@@ -25,7 +25,6 @@ import java.util.Collection;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.helpers.Function2;
 import org.neo4j.helpers.Predicate;
-import org.neo4j.helpers.collection.IteratorUtil;
 import org.neo4j.kernel.impl.skip.LevelGenerator;
 import org.neo4j.kernel.impl.skip.SkipListCabinet;
 import org.neo4j.kernel.impl.skip.SkipListCabinetProvider;
@@ -50,6 +49,7 @@ public abstract class SkipListAccessorBase<R, K, V>
         this.cabinetProvider = cabinetProvider;
     }
 
+    @Override
     public SkipListCabinet<R, K, V> openCabinet( LevelGenerator levelGenerator ) {
         return cabinetProvider.openCabinet( levelGenerator );
     }
