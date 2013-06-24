@@ -19,7 +19,6 @@
  */
 package org.neo4j.kernel.impl.skip;
 
-import java.util.BitSet;
 import java.util.Random;
 
 import org.junit.After;
@@ -31,6 +30,7 @@ import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.impl.nioneo.store.LabelScanStore;
+import org.neo4j.kernel.impl.nioneo.store.LabelSkipListAccessor;
 import org.neo4j.kernel.impl.nioneo.store.LabelStretch;
 import org.neo4j.kernel.impl.skip.store.SkipListStoreCabinet;
 import org.neo4j.kernel.impl.skip.store.SkipListStoreRecord;
@@ -57,11 +57,11 @@ public class LabelScanPerformanceIT
             @Override
             public void run()
             {
-                SkipListStoreCabinet<LabelStretch, byte[]> cabinet =
+                SkipListStoreCabinet<LabelStretch, long[]> cabinet =
                         labelScanStore.openCabinet( newDefaultLevelGenerator( random ) );
                 try
                 {
-                    SkipListStoreRecord<LabelStretch,byte[]> record =
+                    SkipListStoreRecord<LabelStretch,long[]> record =
                             skipListAccessor.findFirst( cabinet, new LabelStretch( labelId, 0 ) );
 
                     int j = 0;
@@ -72,14 +72,24 @@ public class LabelScanPerformanceIT
                             return;
                         }
 
-                        BitSet bits = BitSet.valueOf( cabinet.getRecordValue( record ) );
-                        for (int k = bits.nextSetBit(0); k >= 0; k = bits.nextSetBit(k+1)) {
-                            int nodeId = stretch.nodeId(k);
-                            db.getNodeById( nodeId );
-                            j++;
+                        long[] data = cabinet.getRecordValue( record );
+                        for ( int l = 0; l < data.length; l++ )
+                        {
+                            long value = data[l];
+
+                            for (int k = 0; k < 64; ++k)
+                            {
+                                if ( (value & (1L<<k))  != 0 )
+                                {
+                                    int nodeId = stretch.nodeId( l * 64 + k);
+                                    db.getNodeById( nodeId );
+                                    j++;
+
+                                }
+                            }
+                        }
 //                            if ( j % 50000 == 0 )
 //                                System.out.println( j );
-                        }
 
                         record = cabinet.getNext( record, 0 );
                     }
@@ -97,17 +107,17 @@ public class LabelScanPerformanceIT
     private GraphDatabaseAPI db;
     private LabelScanStore labelScanStore;
     private final long labelId = 1;
-    private LabelSkipListAccessor<SkipListStoreRecord<LabelStretch, byte[]>> skipListAccessor;
+    private LabelSkipListAccessor<SkipListStoreRecord<LabelStretch, long[]>> skipListAccessor;
     private final Random random = new Random( 10 );
 
     @Before
     public void before() throws Exception
     {
         db = (GraphDatabaseAPI) new GraphDatabaseFactory().newEmbeddedDatabase(
-                forTest( getClass() ).graphDbDir( /*delete = */ false ).getAbsolutePath() );
+                forTest( getClass() ).graphDbDir( /*delete = */ true ).getAbsolutePath() );
         labelScanStore = db.getDependencyResolver().resolveDependency( XaDataSourceManager.class )
                 .getNeoStoreDataSource().getNeoStore().getLabelScanStore();
-        skipListAccessor = new LabelSkipListAccessor<>( labelScanStore, LabelScanStore.STRETCH_BYTES );
+        skipListAccessor = new LabelSkipListAccessor<>( labelScanStore );
         
         try
         {
@@ -128,7 +138,7 @@ public class LabelScanPerformanceIT
             LevelGenerator levelGenerator = newDefaultLevelGenerator();
             for ( int j = 0; j < batches; j++ )
             {
-                SkipListStoreCabinet<LabelStretch, byte[]> cabinet = labelScanStore.openCabinet( levelGenerator );
+                SkipListStoreCabinet<LabelStretch, long[]> cabinet = labelScanStore.openCabinet( levelGenerator );
                 try
                 {
                     for ( int k = 0; k < batchSize; k++ )
@@ -136,20 +146,23 @@ public class LabelScanPerformanceIT
                         int i = j * batchSize + k;
                         Node node = db.createNode();
                         long nodeId = node.getId();
+
                         int stretchId = (int) (nodeId >> LabelScanStore.STRETCH_SHIFT);
                         LabelStretch stretch = new LabelStretch( labelId, stretchId );
                         int nodeIndex = (int)(nodeId & LabelScanStore.STRETCH_MASK);
-                        SkipListStoreRecord<LabelStretch, byte[]> record = skipListAccessor.findFirst( cabinet, stretch );
-                        byte[] data;
+                        SkipListStoreRecord<LabelStretch, long[]> record = skipListAccessor.findFirst( cabinet, stretch );
                         if ( cabinet.isNil( record ) )
                         {
-                            record = skipListAccessor.insertAlways( cabinet, stretch, new byte[LabelScanStore.STRETCH_BYTES] );
+                            record = skipListAccessor.insertIfMissing( cabinet, stretch, new long[LabelScanStore.STRETCH_LONGS] );
                         }
 
-                        data = cabinet.getRecordValue( record );
-                        int byteIndex = nodeIndex >> 3;
-                        int bitIndex  = nodeIndex & 7;
-                        data[byteIndex] |= (1 << bitIndex);
+                        long[] data = cabinet.getRecordValue( record );
+                        int longIndex   = nodeIndex >> 6;
+                        int longBit     = nodeIndex & 63;
+                        long longPos    = 1L << longBit;
+                        long oldValue   = data[longIndex];
+                        long newValue   = oldValue | longPos;
+                        data[longIndex] = newValue;
 
                         cabinet.markDirty( record );
 

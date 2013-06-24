@@ -74,32 +74,38 @@ public interface RecordFieldSerializer<V>
         }
     }
 
-    public static class ByteArray implements RecordFieldSerializer<byte[]>
+    public static class LongArray implements RecordFieldSerializer<long[]>
     {
         private final int size;
 
-        public ByteArray( int size )
+        public LongArray( int size )
         {
             this.size = size;
         }
 
         @Override
-        public void serialize( byte[] value, ByteBuffer target )
+        public void serialize( long[] value, ByteBuffer target )
         {
-            target.put( value );
+            for (int i =0; i < size; i++)
+            {
+                target.putLong(value[i]);
+            }
         }
 
         @Override
-        public int computeSerializedLength( byte[] value )
+        public int computeSerializedLength( long[] value )
         {
-            return value.length;
+            return size * 8;
         }
 
         @Override
-        public byte[] deSerialize( ByteBuffer source )
+        public long[] deSerialize( ByteBuffer source )
         {
-            byte[] result = new byte[size];
-            source.get( result );
+            long[] result = new long[size];
+            for (int i =0; i < size; i++)
+            {
+                result[i] = source.getLong();
+            }
             return result;
         }
     };

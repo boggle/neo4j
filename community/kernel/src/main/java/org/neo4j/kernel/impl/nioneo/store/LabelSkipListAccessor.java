@@ -17,19 +17,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.skip;
+package org.neo4j.kernel.impl.nioneo.store;
 
 import org.neo4j.kernel.impl.nioneo.store.LabelStretch;
+import org.neo4j.kernel.impl.skip.SkipListCabinetProvider;
 import org.neo4j.kernel.impl.skip.base.SkipListAccessorBase;
 
-public class LabelSkipListAccessor<R> extends SkipListAccessorBase<R, LabelStretch, byte[]>
+public class LabelSkipListAccessor<R> extends SkipListAccessorBase<R, LabelStretch, long[]>
 {
-    private final int size;
-
-    public LabelSkipListAccessor( SkipListCabinetProvider<R, LabelStretch, byte[]> cabinetProvider, int size )
+    public LabelSkipListAccessor( SkipListCabinetProvider<R, LabelStretch, long[]> cabinetProvider )
     {
         super( cabinetProvider );
-        this.size = size;
     }
 
     @Override
@@ -39,7 +37,7 @@ public class LabelSkipListAccessor<R> extends SkipListAccessorBase<R, LabelStret
     }
 
     @Override
-    public int compareValues( byte[] a, byte[] b )
+    public int compareValues( long[] a, long[] b )
     {
         return 0;
     }

@@ -28,7 +28,7 @@ import org.neo4j.kernel.impl.nioneo.store.windowpool.WindowPoolFactory;
 import org.neo4j.kernel.impl.skip.store.SkipListStore;
 import org.neo4j.kernel.impl.util.StringLogger;
 
-public class LabelScanStore extends SkipListStore<LabelStretch, byte[]>
+public class LabelScanStore extends SkipListStore<LabelStretch, long[]>
 {
     public static final String TYPE_DESCRIPTOR = "LabelScanStore";
 
@@ -37,12 +37,9 @@ public class LabelScanStore extends SkipListStore<LabelStretch, byte[]>
 
     // STRETCH_SIZE nodes are in a single stretch
     public static final int STRETCH_SIZE = 1 << STRETCH_SHIFT;
+    public static final int STRETCH_LONGS = STRETCH_SIZE >> 6;
 
     public static final int STRETCH_MASK = STRETCH_SIZE - 1;
-
-    // STRETCH_BYTES are needed for a stretch bitmap
-    public static final int STRETCH_BYTES = STRETCH_SIZE >> 3;
-
 
     // store version, each store ends with this string (byte encoded)
     public static final String VERSION = buildTypeDescriptorAndVersion( TYPE_DESCRIPTOR );
@@ -51,8 +48,10 @@ public class LabelScanStore extends SkipListStore<LabelStretch, byte[]>
                            WindowPoolFactory windowPoolFactory, FileSystemAbstraction fileSystemAbstraction,
                            StringLogger stringLogger )
     {
-        super( fileName, conf, IdType.LABEL_SCAN, idGeneratorFactory, windowPoolFactory, fileSystemAbstraction, stringLogger,
-               new RecordFieldSerializer.LabelStretchSerializer(), new RecordFieldSerializer.ByteArray( STRETCH_BYTES ) );
+        super( fileName, conf, IdType.LABEL_SCAN, idGeneratorFactory,
+                windowPoolFactory, fileSystemAbstraction, stringLogger,
+                new RecordFieldSerializer.LabelStretchSerializer(),
+                new RecordFieldSerializer.LongArray( STRETCH_LONGS ) );
     }
 
     @Override
