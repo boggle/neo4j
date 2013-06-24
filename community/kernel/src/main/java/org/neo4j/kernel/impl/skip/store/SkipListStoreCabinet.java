@@ -187,4 +187,10 @@ public class SkipListStoreCabinet<K, V> extends SkipListCabinetBase<SkipListStor
         record.assertNotRemoved();
         return record;
     }
+
+    @Override
+    public void markDirty( SkipListStoreRecord<K, V> record )
+    {
+        record.markDirty();
+    }
 }

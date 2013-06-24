@@ -101,4 +101,9 @@ public abstract class SkipListCabinetBase<R, K, V> implements SkipListCabinet<R,
             throw new IllegalStateException( "Cabinet already closed" );
     }
 
+    @Override
+    public void markDirty( R record )
+    {
+        throw new UnsupportedOperationException(  );
+    }
 }

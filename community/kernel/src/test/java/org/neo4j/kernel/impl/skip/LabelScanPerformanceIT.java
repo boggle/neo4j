@@ -19,18 +19,19 @@
  */
 package org.neo4j.kernel.impl.skip;
 
+import java.util.BitSet;
 import java.util.Random;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
-import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.kernel.GraphDatabaseAPI;
 import org.neo4j.kernel.impl.nioneo.store.LabelScanStore;
-import org.neo4j.kernel.impl.skip.base.SkipListIterator;
+import org.neo4j.kernel.impl.nioneo.store.LabelStretch;
 import org.neo4j.kernel.impl.skip.store.SkipListStoreCabinet;
 import org.neo4j.kernel.impl.skip.store.SkipListStoreRecord;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
@@ -44,7 +45,10 @@ import static org.neo4j.test.TargetDirectory.forTest;
 public class LabelScanPerformanceIT
 {
     private static final int NUM_NODES = 5000000; // 10M
-    
+
+    int batchSize = 500;
+    int batches   = NUM_NODES / batchSize;
+
     @Test
     public void measureWhereAllNodesHaveTheLabel() throws Exception
     {
@@ -53,18 +57,34 @@ public class LabelScanPerformanceIT
             @Override
             public void run()
             {
-                SkipListStoreCabinet<Long, Long> cabinet =
+                SkipListStoreCabinet<LabelStretch, byte[]> cabinet =
                         labelScanStore.openCabinet( newDefaultLevelGenerator( random ) );
                 try
                 {
-                    ResourceIterator<Long> iterator = skipListAccessor.findAll( cabinet,
-                            SkipListIterator.<SkipListStoreRecord<Long, Long>, Long, Long> returnValues(), labelId );
-                    for ( int i = 0; iterator.hasNext(); i++ )
-                    {
-                        db.getNodeById( iterator.next() );
-                        if ( i % 100000 == 0 )
-                            System.out.println( i );
+                    SkipListStoreRecord<LabelStretch,byte[]> record =
+                            skipListAccessor.findFirst( cabinet, new LabelStretch( labelId, 0 ) );
+
+                    int j = 0;
+                    while ( ! cabinet.isNil( record ) ) {
+                        LabelStretch stretch = cabinet.getRecordKey( record );
+                        if ( stretch.labelId() != labelId )
+                        {
+                            return;
+                        }
+
+                        BitSet bits = BitSet.valueOf( cabinet.getRecordValue( record ) );
+                        for (int k = bits.nextSetBit(0); k >= 0; k = bits.nextSetBit(k+1)) {
+                            int nodeId = stretch.nodeId(k);
+                            db.getNodeById( nodeId );
+                            j++;
+//                            if ( j % 50000 == 0 )
+//                                System.out.println( j );
+                        }
+
+                        record = cabinet.getNext( record, 0 );
                     }
+
+                    System.out.println( "counted nodes: " + j);
                 }
                 finally
                 {
@@ -77,7 +97,7 @@ public class LabelScanPerformanceIT
     private GraphDatabaseAPI db;
     private LabelScanStore labelScanStore;
     private final long labelId = 1;
-    private SkipListAccessor<SkipListStoreRecord<Long, Long>, Long, Long> skipListAccessor;
+    private LabelSkipListAccessor<SkipListStoreRecord<LabelStretch, byte[]>> skipListAccessor;
     private final Random random = new Random( 10 );
 
     @Before
@@ -87,7 +107,7 @@ public class LabelScanPerformanceIT
                 forTest( getClass() ).graphDbDir( /*delete = */ false ).getAbsolutePath() );
         labelScanStore = db.getDependencyResolver().resolveDependency( XaDataSourceManager.class )
                 .getNeoStoreDataSource().getNeoStore().getLabelScanStore();
-        skipListAccessor = new SkipListAccessor<SkipListStoreRecord<Long, Long>, Long, Long>( labelScanStore );
+        skipListAccessor = new LabelSkipListAccessor<>( labelScanStore, LabelScanStore.STRETCH_BYTES );
         
         try
         {
@@ -103,32 +123,48 @@ public class LabelScanPerformanceIT
     {
         System.out.println( "Creating data set" );
         BatchTransaction tx = beginBatchTx( db ).batchSize( 50000 ).printProgress( true );
-        LevelGenerator levelGenerator = newDefaultLevelGenerator();
-        SkipListStoreCabinet<Long, Long> cabinet = labelScanStore.openCabinet( levelGenerator );
         try
         {
-            for ( int i = 0; i < NUM_NODES; i++ )
+            LevelGenerator levelGenerator = newDefaultLevelGenerator();
+            for ( int j = 0; j < batches; j++ )
             {
-                Node node = db.createNode();
-                if ( cabinet == null )
+                SkipListStoreCabinet<LabelStretch, byte[]> cabinet = labelScanStore.openCabinet( levelGenerator );
+                try
                 {
-                    cabinet = labelScanStore.openCabinet( levelGenerator );
+                    for ( int k = 0; k < batchSize; k++ )
+                    {
+                        int i = j * batchSize + k;
+                        Node node = db.createNode();
+                        long nodeId = node.getId();
+                        int stretchId = (int) (nodeId >> LabelScanStore.STRETCH_SHIFT);
+                        LabelStretch stretch = new LabelStretch( labelId, stretchId );
+                        int nodeIndex = (int)(nodeId & LabelScanStore.STRETCH_MASK);
+                        SkipListStoreRecord<LabelStretch, byte[]> record = skipListAccessor.findFirst( cabinet, stretch );
+                        byte[] data;
+                        if ( cabinet.isNil( record ) )
+                        {
+                            record = skipListAccessor.insertAlways( cabinet, stretch, new byte[LabelScanStore.STRETCH_BYTES] );
+                        }
+
+                        data = cabinet.getRecordValue( record );
+                        int byteIndex = nodeIndex >> 3;
+                        int bitIndex  = nodeIndex & 7;
+                        data[byteIndex] |= (1 << bitIndex);
+
+                        cabinet.markDirty( record );
+
+                        tx.increment();
+                    }
                 }
-                skipListAccessor.insertIfMissing( cabinet, labelId, node.getId() );
-                if ( tx.increment() )
+                finally
                 {
                     cabinet.close();
-                    cabinet = null;
                 }
             }
         }
         finally
         {
             tx.finish();
-            if ( cabinet != null )
-            {
-                cabinet.close();
-            }
         }
         System.out.println( "Data set created" );
     }

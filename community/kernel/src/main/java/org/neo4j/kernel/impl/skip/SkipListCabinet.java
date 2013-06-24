@@ -56,6 +56,8 @@ public interface SkipListCabinet<R, K, V>
 
     V getRecordValue( R record );
 
+    void markDirty( R record );
+
     int getHeight(R record);
 
     R getNext( R record, int i);

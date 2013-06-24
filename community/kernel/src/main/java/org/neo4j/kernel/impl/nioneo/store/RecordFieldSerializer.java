@@ -52,6 +52,58 @@ public interface RecordFieldSerializer<V>
         }
     };
 
+    public static class LabelStretchSerializer implements RecordFieldSerializer<LabelStretch>
+    {
+        @Override
+        public void serialize( LabelStretch value, ByteBuffer target )
+        {
+            target.putLong( value.labelId() );
+            target.putInt( value.stretchId() );
+        }
+
+        @Override
+        public int computeSerializedLength( LabelStretch value )
+        {
+            return 8 + 4;
+        }
+
+        @Override
+        public LabelStretch deSerialize( ByteBuffer source )
+        {
+            return new LabelStretch( source.getLong(), source.getInt() );
+        }
+    }
+
+    public static class ByteArray implements RecordFieldSerializer<byte[]>
+    {
+        private final int size;
+
+        public ByteArray( int size )
+        {
+            this.size = size;
+        }
+
+        @Override
+        public void serialize( byte[] value, ByteBuffer target )
+        {
+            target.put( value );
+        }
+
+        @Override
+        public int computeSerializedLength( byte[] value )
+        {
+            return value.length;
+        }
+
+        @Override
+        public byte[] deSerialize( ByteBuffer source )
+        {
+            byte[] result = new byte[size];
+            source.get( result );
+            return result;
+        }
+    };
+
     public static final RecordFieldSerializer<String> STRING = new RecordFieldSerializer<String>()
     {
 

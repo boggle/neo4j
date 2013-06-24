@@ -57,7 +57,7 @@ public class SkipListStore<K, V>
     public static final int P_BITS = 2;  /* p = 1/2^P_BITS */
     public static final int H_MAX  = 18; /* stores up to 2^36 node or relationship ids */
 
-    public static final int BLOCK_SIZE = 88;
+    public static final int BLOCK_SIZE = 108;
 
     private final RecordFieldSerializer<K> keySerializer;
     private final RecordFieldSerializer<V> valueSerializer;
@@ -223,14 +223,20 @@ public class SkipListStore<K, V>
                 else
                 {
                     if ( dynRecords == null )
+                    {
                         dynRecords = allocateDynamicRecords( record, asIterator( forceGetRecord( record.getId() ) ) );
+                    }
                     else
+                    {
                         dynRecords = updateDynamicRecords( record, dynRecords.iterator() );
+                    }
                 }
             }
 
             if ( dynState.shouldWrite )
+            {
                 storeDynamicRecords( dynRecords.iterator() );
+            }
         }
 
         private Collection<DynamicRecord> allocateDynamicRecords( SkipListStoreRecord<K, V> record,

@@ -123,4 +123,10 @@ public class SkipListStoreRecord<K, V> extends SkipListRecordBase<K, V>
 
         recordState = SkipListRecordState.REMOVED;
     }
+
+    public void markDirty()
+    {
+        assertNotRemoved();
+        recordState = SkipListRecordState.OUTDATED;
+    }
 }

@@ -83,6 +83,12 @@ public abstract class SkipListCabinetBaseAdapter<R, K, V> extends SkipListCabine
         throw unsupportedOperation();
     }
 
+    @Override
+    public void markDirty( R record )
+    {
+        throw unsupportedOperation();
+    }
+
     private UnsupportedOperationException unsupportedOperation()
     {
         return new UnsupportedOperationException(  );
