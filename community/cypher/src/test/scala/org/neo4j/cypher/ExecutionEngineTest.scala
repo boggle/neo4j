@@ -2847,4 +2847,49 @@ RETURN x0.name
 
     assert(result === List(Map("'Andres'"->"Andres")))
   }
+
+  @Test
+  def peters_bus() {
+    // given
+  parseAndExecute("""
+CREATE
+(A:Stop:Line1:Line2 { name:"A" }),
+(B:Stop:Line1 { name: "B" }),
+(C:Stop:Line1 { name: "C" }),
+(D:Stop:Line1 { name: "D" }),
+(E:Stop:Line1 { name: "E" }),
+(F:Stop:Line1 { name: "F" }),
+(G:Stop:Line1:Line3 { name: "G" }),
+(H:Stop:Line2 { name: "H" }),
+(I:Stop:Line3 { name: "I" }),
+A-[:TOWARDS]->B,
+A-[:TOWARDS]->D,
+B-[:TOWARDS]->C,
+C-[:TOWARDS]->D,
+D-[:TOWARDS]->E,
+D-[:TOWARDS]->F,
+F-[:TOWARDS]->G,
+G-[:TOWARDS]->I,
+H-[:TOWARDS]->A
+""")
+
+    // when
+    val result = parseAndExecute("""
+START s1 = node(*)
+MATCH line=(s1:Stop:Line1)-[r:TOWARDS*]->(s2:Stop:Line1),
+           (left:Stop:Line1)-[before?:TOWARDS]->(s1),
+           (s2)-[after?:TOWARDS]->(right:Stop:Line1)
+WHERE ALL (n IN nodes(line) WHERE n:Stop:Line1) AND left IS NULL AND right IS NULL
+RETURN DISTINCT s1.name AS begin, s2.name AS end, length(line) AS len
+ORDER BY len DESC
+""")
+
+    assert(
+      List(
+        Map("begin" -> "A", "end" -> "G", "len" -> 5),
+        Map("begin" -> "A", "end" -> "E", "len" -> 4),
+        Map("begin" -> "A", "end" -> "G", "len" -> 3),
+        Map("begin" -> "A", "end" -> "E", "len" -> 2)
+      ) === result.toList )
+  }
 }
