@@ -227,6 +227,16 @@ class MatchTest extends DocumentingTestBase {
     )
   }
 
+  @Test def predicatesOnOptionals() {
+    testQuery(
+      title = "Predicates on optional elements",
+      text = "When matching a pattern with optional elements, those elements might not be found. In that case, any predicates on such an element are ignored in WHERE",
+      queryText = """start a=node(*) match (a:Person)-[?:FATHER]->(f) where f.name = "John Doe" return a, f.name""",
+      returns = """Returns all actors for which we either do not know the father or whose father is 'John Doe'. Now obviously we have no fathers named John Doe, but we still get back all actors for which we do not know the father.""",
+      assertions = (p) => assert( p.toList.size > 0 )
+    )
+  }
+
   @Test def optionalTypedRelationship() {
     testQuery(
       title = "Optional typed and named relationship",

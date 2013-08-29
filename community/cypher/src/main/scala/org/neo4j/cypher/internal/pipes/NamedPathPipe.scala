@@ -26,28 +26,36 @@ import org.neo4j.cypher.PathImpl
 import org.neo4j.graphdb.{Path, PropertyContainer}
 import org.neo4j.cypher.internal.parser._
 import collection.JavaConverters._
-import org.neo4j.cypher.internal.commands.values.UnboundValue
+import org.neo4j.cypher.internal.commands.values.NotApplicable
 
 case class NamedPathPipe(source: Pipe, pathName: String, entities: Seq[AbstractPattern]) extends PipeWithSource(source) {
   protected def internalCreateResults(input: Iterator[ExecutionContext], state: QueryState) =
     input.map {
-      ctx => ctx += (pathName -> getPath(ctx))
+      ctx => ctx += (pathName -> getPath(ctx).getOrElse(NotApplicable))
     }
 
   // TODO: This is duplicated with PathExtractor
-  private def getPath(ctx: ExecutionContext): Path = {
-    def get(x: String): PropertyContainer = ctx(x) match {
-      case UnboundValue => null
-      case x            => x.asInstanceOf[PropertyContainer]
+  private def getPath(ctx: ExecutionContext): Option[Path] = {
+    def extend(soFar: List[PropertyContainer], x: String): List[PropertyContainer] = ctx(x) match {
+      case NotApplicable => null
+      case x             => soFar :+ x.asInstanceOf[PropertyContainer]
     }
 
-    val p: Seq[PropertyContainer] = entities.foldLeft(get(firstNode) :: Nil)((soFar, p) => p match {
-      case e: ParsedEntity           => soFar
-      case r: ParsedRelation         => soFar :+ get(r.name) :+ get(r.end.name)
-      case path: PatternWithPathName => getPath(ctx, path.pathName, soFar)
+    val p: Seq[PropertyContainer] = entities.foldLeft(extend(List.empty, firstNode))((soFar, p) => p match {
+      case e: ParsedEntity =>
+        soFar
+      case r: ParsedRelation =>
+        val result = extend( extend( soFar, r.name), r.end.name )
+        if ( null == result ) {
+          return None
+        }
+        result
+
+      case path: PatternWithPathName =>
+        getPath(ctx, path.pathName, soFar)
     })
 
-    buildPath(p)
+    Some(buildPath(p))
   }
 
   private def firstNode: String =

@@ -61,6 +61,8 @@ include::optional-typed-and-named-relationship.asciidoc[]
 
 include::properties-on-optional-elements.asciidoc[]
 
+include::predicates-on-optional-elements.asciidoc[]
+
 include::shortest-path.asciidoc[]
 
 include::all-shortest-paths.asciidoc[]
@@ -68,7 +70,5 @@ include::all-shortest-paths.asciidoc[]
 include::named-path.asciidoc[]
 
 include::matching-on-a-bound-relationship.asciidoc[]
-
-include::match-unbound-nodes-exceptions.asciidoc[]
 
 

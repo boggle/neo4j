@@ -23,19 +23,25 @@ import collection.mutable.ListBuffer
 import org.neo4j.cypher.internal.commands.expressions.Expression
 import org.neo4j.cypher.internal.ExecutionContext
 import org.neo4j.cypher.internal.pipes.QueryState
-import org.neo4j.cypher.internal.commands.values.UnboundValue
+import org.neo4j.cypher.internal.commands.values.NotApplicable
 
 
 class CollectFunction(value:Expression) extends AggregationFunction {
   val collection = new ListBuffer[Any]()
+  var isApplicable = true
 
   def apply(data: ExecutionContext)(implicit state:QueryState) {
-    value(data) match {
-      case null         =>
-      case UnboundValue =>
-      case v            => collection += v
+    val item = value(data)
+    if (NotApplicable(item)) {
+      isApplicable = false
+    } else if (null != item) {
+      collection += item
     }
   }
 
-  def result: Any = collection.toSeq
+  def result: Any =
+    if (isApplicable)
+      collection.toSeq
+    else
+      NotApplicable
 }

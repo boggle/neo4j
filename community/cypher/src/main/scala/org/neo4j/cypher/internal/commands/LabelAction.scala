@@ -39,7 +39,7 @@ case class LabelAction(entity: Expression, labelOp: LabelOp, labels: Seq[KeyToke
   extends UpdateAction with GraphElementPropertyFunctions with CollectionSupport {
 
   override def isMissingUnboundDependencies(context: ExecutionContext, state: QueryState): Boolean =
-    ! UpdateActionHelper.isUnbound(entity)(context, state)
+    ! UpdateActionHelper.isNotApplicable(entity)(context, state)
 
   def children = labels.flatMap(_.children) :+ entity
 

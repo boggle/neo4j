@@ -31,7 +31,7 @@ case class DeletePropertyAction(element: Expression, propertyKey: KeyToken)
   extends UpdateAction {
 
   override def isMissingUnboundDependencies(context: ExecutionContext, state: QueryState): Boolean =
-    ! UpdateActionHelper.isUnbound(element)(context, state)
+    ! UpdateActionHelper.isNotApplicable(element)(context, state)
 
   def exec(context: ExecutionContext, state: QueryState) = {
     propertyKey.getOptId(state.query) match {

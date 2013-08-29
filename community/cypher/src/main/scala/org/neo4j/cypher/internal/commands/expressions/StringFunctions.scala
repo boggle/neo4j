@@ -23,9 +23,9 @@ import org.neo4j.cypher.CypherTypeException
 import org.neo4j.cypher.internal.helpers.{IsCollection, CollectionSupport}
 import org.neo4j.graphdb.{PropertyContainer, Relationship, Node}
 import org.neo4j.cypher.internal.symbols._
-import org.neo4j.cypher.internal.{ExecutionContext}
+import org.neo4j.cypher.internal.ExecutionContext
 import org.neo4j.cypher.internal.spi.QueryContext
-import org.neo4j.cypher.internal.commands.values.KeyToken
+import org.neo4j.cypher.internal.commands.values.{NotApplicable, KeyToken}
 import org.neo4j.cypher.internal.pipes.QueryState
 
 abstract class StringFunction(arg: Expression) extends NullInNullOutExpression(arg) with StringHelper with CollectionSupport {
@@ -62,6 +62,7 @@ trait StringHelper {
     case x: String          => "\"" + x + "\""
     case v: KeyToken        => v.name
     case Some(x)            => x.toString
+    case NotApplicable      => "<null>"
     case null               => "<null>"
     case x                  => x.toString
   }
@@ -79,7 +80,10 @@ trait StringHelper {
 }
 
 case class StrFunction(argument: Expression) extends StringFunction(argument) with StringHelper  {
-  def compute(value: Any, m: ExecutionContext)(implicit state: QueryState): Any = text(argument(m), state.query)
+  def compute(value: Any, m: ExecutionContext)(implicit state: QueryState): Any = argument(m) match {
+    case NotApplicable => NotApplicable
+    case x             => text(x, state.query)
+  }
 
   def rewrite(f: (Expression) => Expression) = f(StrFunction(argument.rewrite(f)))
 }

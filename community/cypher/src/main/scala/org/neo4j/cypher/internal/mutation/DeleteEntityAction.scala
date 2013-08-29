@@ -32,7 +32,7 @@ case class DeleteEntityAction(elementToDelete: Expression)
   extends UpdateAction {
 
   def exec(context: ExecutionContext, state: QueryState) = {
-    if (! UpdateActionHelper.isUnbound(elementToDelete)(context, state)) {
+    if (! UpdateActionHelper.isNotApplicable(elementToDelete)(context, state)) {
       elementToDelete(context)(state) match {
         case n: Node => delete(n, state)
         case r: Relationship => delete(r, state)

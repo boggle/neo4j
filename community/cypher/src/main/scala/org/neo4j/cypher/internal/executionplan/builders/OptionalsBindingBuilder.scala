@@ -23,13 +23,18 @@ import org.neo4j.cypher.internal.executionplan.{ExecutionPlanInProgress, PlanBui
 import org.neo4j.cypher.internal.spi.PlanContext
 import org.neo4j.cypher.internal.pipes.OptionalsBindingPipe
 
-class OptionalsBinderBuilder extends PlanBuilder {
+class OptionalsBindingBuilder extends PlanBuilder {
+
+  def hasOptionalPatterns(plan: ExecutionPlanInProgress) = plan.query.patterns.exists( _.token.optional )
 
   def canWorkWith(plan: ExecutionPlanInProgress, ctx: PlanContext): Boolean = ! plan.query.bound
 
-  def apply(plan: ExecutionPlanInProgress, ctx: PlanContext): ExecutionPlanInProgress = {
-    plan.copy( query = plan.query.copy( bound = true ), pipe = new OptionalsBindingPipe( plan.pipe ) )
-  }
+  def apply(plan: ExecutionPlanInProgress, ctx: PlanContext): ExecutionPlanInProgress =
+    if (hasOptionalPatterns(plan)) {
+      plan.copy( query = plan.query.copy( bound = true ), pipe = new OptionalsBindingPipe( plan.pipe ) )
+    } else {
+      plan.copy( query = plan.query.copy( bound = true ) )
+    }
 
   def priority: Int = PlanBuilder.Lowest
 }

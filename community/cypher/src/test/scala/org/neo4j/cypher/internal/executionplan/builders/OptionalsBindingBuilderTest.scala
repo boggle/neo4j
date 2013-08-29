@@ -23,10 +23,12 @@ import org.neo4j.cypher.internal.executionplan.{PartiallySolvedQuery, PlanBuilde
 import org.junit.Test
 import org.neo4j.cypher.internal.pipes.OptionalsBindingPipe
 import org.junit.Assert._
+import org.neo4j.cypher.internal.commands.RelatedTo
+import org.neo4j.graphdb.Direction
 
-class OptionalsBinderBuilderTest extends BuilderTest {
+class OptionalsBindingBuilderTest extends BuilderTest {
 
-  def builder: PlanBuilder = new OptionalsBinderBuilder
+  def builder: PlanBuilder = new OptionalsBindingBuilder
 
   @Test
   def should_want_to_insert_optionals_binding_insert_into_plan_without_it() {
@@ -52,7 +54,10 @@ class OptionalsBinderBuilderTest extends BuilderTest {
   @Test
   def should_insert_pipe() {
     // given
-    val query     = PartiallySolvedQuery()
+    val query     =
+      PartiallySolvedQuery()
+        .copy( patterns = Seq(Unsolved(RelatedTo("a", "b", "r", "KNOWS", Direction.OUTGOING, optional = true ) ) ),
+        bound = true )
     val queryPlan = plan(query)
 
     // when

@@ -76,5 +76,3 @@ class LabelScanHintException(identifier: String, label: String, message: String)
 class UnableToPickStartPointException(message: String) extends CypherException(message)
 
 class InvalidSemanticsException( message: String ) extends CypherException(message)
-
-class UnboundIdentifierException extends EntityNotFoundException("Unbound entity encountered")

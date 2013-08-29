@@ -215,7 +215,7 @@ The Neo4j Team""")
 
   def binding = new Phase {
     def myBuilders: Seq[PlanBuilder] = Seq(
-      new OptionalsBinderBuilder
+      new OptionalsBindingBuilder
     )
   }
 

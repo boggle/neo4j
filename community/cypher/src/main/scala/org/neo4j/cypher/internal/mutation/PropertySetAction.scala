@@ -32,7 +32,7 @@ case class PropertySetAction(prop: Property, e: Expression)
   val Property(mapExpr, propertyKey) = prop
 
   override def isMissingUnboundDependencies(context: ExecutionContext, state: QueryState): Boolean =
-    ! UpdateActionHelper.isUnbound(mapExpr)(context, state)
+    ! UpdateActionHelper.isNotApplicable(mapExpr)(context, state)
 
   def exec(context: ExecutionContext, state: QueryState) = {
     implicit val s = state
