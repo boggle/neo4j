@@ -37,6 +37,8 @@ abstract class SlotTracker extends (String => Option[Slot]) {
   def +?=(name: String): Slot
   def get(name: String): Slot
 
+  // def mapExpression(e: Expression): Expression = e
+
   def mapExpression(e: Expression): Expression = e match {
     case i @ Identifier(entityName) if i.slot.isEmpty =>
       apply(entityName) match {

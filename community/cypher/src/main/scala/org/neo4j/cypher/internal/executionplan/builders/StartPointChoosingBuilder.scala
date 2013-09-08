@@ -54,12 +54,19 @@ class StartPointChoosingBuilder extends PlanBuilder {
     val q: PartiallySolvedQuery = plan.query
 
     // Find disconnected patterns, and make sure we have start points for all of them
-    val disconnectedStarItems: Seq[QueryToken[StartItem]] = findStartItemsForDisconnectedPatterns(plan, ctx).map(Unsolved(_))
+    val disconnectedStarts: Seq[QueryToken[StartItem]] =
+      findStartItemsForDisconnectedPatterns(plan, ctx).map(Unsolved(_))
+
+//    // Register slots for new start items
+//    for ( queryToken <- disconnectedStarts.toSet if queryToken.unsolved ) {
+//      ctx.slots += queryToken.token.identifierName
+//    }
 
     // Find merge points that do not have a node producer, and produce one for them
     val updatesWithSolvedMergePoints = plan.query.updates.map(solveUnsolvedMergePoints(ctx))
 
-    plan.copy(query = q.copy(start = disconnectedStarItems ++ q.start, updates = updatesWithSolvedMergePoints))
+    val newQuery = q.copy(start = disconnectedStarts ++ q.start, updates = updatesWithSolvedMergePoints)
+    plan.copy(query = newQuery.tracked(ctx.slots))
   }
 
   private def solveUnsolvedMergePoints(ctx: PlanContext): (QueryToken[UpdateAction] => QueryToken[UpdateAction]) = {
