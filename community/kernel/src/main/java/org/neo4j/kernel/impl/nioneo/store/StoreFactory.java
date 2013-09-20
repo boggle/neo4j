@@ -79,7 +79,8 @@ public class StoreFactory
     public static final String LABEL_TOKEN_STORE_NAME = ".labeltokenstore.db";
     public static final String LABEL_TOKEN_NAMES_STORE_NAME = LABEL_TOKEN_STORE_NAME + NAMES_PART;
     public static final String SCHEMA_STORE_NAME = ".schemastore.db";
-    
+    public static final String LABEL_STATISTICS_STORE_NAME = ".labelstatisticsstore.db";
+
     public StoreFactory( Config config, IdGeneratorFactory idGeneratorFactory, WindowPoolFactory windowPoolFactory,
                          FileSystemAbstraction fileSystemAbstraction, StringLogger stringLogger, TxHook txHook )
     {
@@ -135,7 +136,8 @@ public class StoreFactory
                 newRelationshipStore(new File( fileName.getPath() + RELATIONSHIP_STORE_NAME)),
                 newNodeStore(new File( fileName.getPath() + NODE_STORE_NAME)),
                 // We don't need any particular upgrade when we add the schema store
-                newSchemaStore(new File( fileName.getPath() + SCHEMA_STORE_NAME)));
+                newSchemaStore(new File( fileName.getPath() + SCHEMA_STORE_NAME)),
+                newLabelStatisticsStore(new File(fileName.getPath() + LABEL_STATISTICS_STORE_NAME)));
     }
 
     private void tryToUpgradeStores( File fileName )
@@ -152,7 +154,12 @@ public class StoreFactory
         return new SchemaStore( file, config, IdType.SCHEMA, idGeneratorFactory, windowPoolFactory,
                 fileSystemAbstraction, stringLogger );
     }
-    
+
+    public LabelStatisticsStore newLabelStatisticsStore( File file )
+    {
+        return new LabelStatisticsStore( file, config, windowPoolFactory, IdType.NODE_LABELS, idGeneratorFactory, fileSystemAbstraction, stringLogger );
+    }
+
     private DynamicStringStore newDynamicStringStore(File fileName, IdType nameIdType)
     {
         return new DynamicStringStore( fileName, config, nameIdType, idGeneratorFactory, windowPoolFactory,
@@ -228,6 +235,7 @@ public class StoreFactory
         createRelationshipTypeStore(new File( fileName.getPath() + RELATIONSHIP_TYPE_TOKEN_STORE_NAME ));
         createLabelTokenStore( new File( fileName.getPath() + LABEL_TOKEN_STORE_NAME ) );
         createSchemaStore(new File( fileName.getPath() + SCHEMA_STORE_NAME));
+        createLabelStatisticsStore(new File( fileName.getPath() + LABEL_STATISTICS_STORE_NAME) );
         
         NeoStore neoStore = newNeoStore( fileName );
         /*
@@ -345,6 +353,11 @@ public class StoreFactory
     public void createSchemaStore( File fileName )
     {
         createEmptyDynamicStore( fileName, SchemaStore.BLOCK_SIZE, SchemaStore.VERSION, IdType.SCHEMA );
+    }
+
+    public void createLabelStatisticsStore( File fileName )
+    {
+        createEmptyStore( fileName, buildTypeDescriptorAndVersion( LabelStatisticsStore.TYPE_DESCRIPTOR ) );
     }
 
     /**

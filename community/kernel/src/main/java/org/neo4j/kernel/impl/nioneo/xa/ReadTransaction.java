@@ -484,4 +484,10 @@ class ReadTransaction implements NeoStoreTransaction
     {
         throw readOnlyException();
     }
+
+    @Override
+    public void updateLabelStatistics( Map<Integer, Long> labelStatistics )
+    {
+        throw readOnlyException();
+    }
 }

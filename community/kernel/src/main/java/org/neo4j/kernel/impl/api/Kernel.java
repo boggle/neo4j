@@ -19,6 +19,9 @@
  */
 package org.neo4j.kernel.impl.api;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.transaction.HeuristicMixedException;
@@ -71,6 +74,8 @@ import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.XaDataSourceManager;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
+
+import static java.util.Collections.unmodifiableMap;
 
 import static org.neo4j.helpers.collection.IteratorUtil.loop;
 import static org.neo4j.kernel.impl.transaction.XaDataSourceManager.neoStoreListener;
@@ -446,94 +451,14 @@ public class Kernel extends LifecycleAdapter implements KernelAPI
         {
             if ( hasTxStateWithChanges() )
             {
-                final AtomicBoolean clearState = new AtomicBoolean( false );
-                txState().accept( new TxState.Visitor()
+                TransactionStateVisitor visitor = new TransactionStateVisitor();
+                txState().accept( visitor );
+                Map<Integer, Long> labelStatistics = visitor.labelStatistics();
+                if ( ! labelStatistics.isEmpty() )
                 {
-                    @Override
-                    public void visitNodeLabelChanges( long id, Set<Long> added, Set<Long> removed )
-                    {
-                        // TODO: move store level changes here.
-                    }
-
-                    @Override
-                    public void visitAddedIndex( IndexDescriptor element, boolean isConstraintIndex )
-                    {
-                        SchemaIndexProvider.Descriptor providerDescriptor = providerMap.getDefaultProvider()
-                                                                                       .getProviderDescriptor();
-                        IndexRule rule;
-                        if ( isConstraintIndex )
-                        {
-                            rule = IndexRule.constraintIndexRule( schemaStorage.newRuleId(), element.getLabelId(),
-                                                                  element.getPropertyKeyId(), providerDescriptor,
-                                                                  null );
-                        }
-                        else
-                        {
-                            rule = IndexRule.indexRule( schemaStorage.newRuleId(), element.getLabelId(),
-                                                        element.getPropertyKeyId(), providerDescriptor );
-                        }
-                        persistenceManager.createSchemaRule( rule );
-                    }
-
-                    @Override
-                    public void visitRemovedIndex( IndexDescriptor element, boolean isConstraintIndex )
-                    {
-                        try
-                        {
-                            IndexRule rule = schemaStorage
-                                    .indexRule( element.getLabelId(), element.getPropertyKeyId() );
-                            persistenceManager.dropSchemaRule( rule.getId() );
-                        }
-                        catch ( SchemaRuleNotFoundException e )
-                        {
-                            throw new ThisShouldNotHappenError(
-                                    "Tobias Lindaaker",
-                                    "Index to be removed should exist, since its existence should have " +
-                                    "been validated earlier and the schema should have been locked." );
-                        }
-                    }
-
-                    @Override
-                    public void visitAddedConstraint( UniquenessConstraint element, long indexId )
-                    {
-                        try
-                        {
-                            constraintIndexCreator.validateConstraintIndex( element, indexId );
-                        }
-                        catch ( CreateConstraintFailureException e )
-                        {
-                            // TODO: Revisit decision to rethrow as RuntimeException.
-                            throw new ConstraintCreationException( e );
-                        }
-                        clearState.set( true );
-                        long constraintId = schemaStorage.newRuleId();
-                        persistenceManager.createSchemaRule( UniquenessConstraintRule.uniquenessConstraintRule(
-                                constraintId, element.label(), element.propertyKeyId(), indexId ) );
-                        persistenceManager.setConstraintIndexOwner( indexId, constraintId );
-                    }
-
-                    @Override
-                    public void visitRemovedConstraint( UniquenessConstraint element )
-                    {
-                        try
-                        {
-                            clearState.set( true );
-                            UniquenessConstraintRule rule = schemaStorage
-                                    .uniquenessConstraint( element.label(), element.propertyKeyId() );
-                            persistenceManager.dropSchemaRule( rule.getId() );
-                        }
-                        catch ( SchemaRuleNotFoundException e )
-                        {
-                            throw new ThisShouldNotHappenError(
-                                    "Tobias Lindaaker",
-                                    "Constraint to be removed should exist, since its existence should " +
-                                    "have been validated earlier and the schema should have been locked." );
-                        }
-                        // Remove the index for the constraint as well
-                        visitRemovedIndex( new IndexDescriptor( element.label(), element.propertyKeyId() ), true );
-                    }
-                } );
-                if ( clearState.get() )
+                    persistenceManager.updateLabelStatistics( labelStatistics );
+                }
+                if ( visitor.hasClearState() )
                 {
                     schemaState.clear();
                 }
@@ -589,6 +514,133 @@ public class Kernel extends LifecycleAdapter implements KernelAPI
         public boolean hasTxStateWithChanges()
         {
             return legacyStateBridge.hasChanges() || ( hasTxState() && txState.hasChanges() );
+        }
+
+        private class TransactionStateVisitor implements TxState.Visitor
+        {
+            private final AtomicBoolean clearState = new AtomicBoolean( false );
+            private Map<Integer, Long> labelStatistics;
+
+            public Boolean hasClearState()
+            {
+                return clearState.get();
+            }
+
+            public Map<Integer, Long> labelStatistics()
+            {
+                return labelStatistics == null ?
+                        Collections.<Integer, Long>emptyMap() : unmodifiableMap( labelStatistics );
+            }
+
+            @Override
+            public void visitNodeLabelChanges( long id, Set<Long> added, Set<Long> removed )
+            {
+                for ( long labelId : added )
+                {
+                    updateLabelStatistics( (int) labelId, +1l );
+                }
+
+                for ( long labelId : removed )
+                {
+                    updateLabelStatistics( (int) labelId, -1l );
+                }
+            }
+
+            private void updateLabelStatistics( int labelId, long increment )
+            {
+                if ( null == labelStatistics )
+                {
+                    labelStatistics = new HashMap<>();
+                }
+                long current = labelStatistics.containsKey( labelId ) ? labelStatistics.get( labelId ) : 0;
+                long updated = current + increment;
+                if ( 0 == updated )
+                {
+                    labelStatistics.remove( labelId );
+                }
+                else
+                {
+                    labelStatistics.put( labelId, updated );
+                }
+            }
+
+            @Override
+            public void visitAddedIndex( IndexDescriptor element, boolean isConstraintIndex )
+            {
+                SchemaIndexProvider.Descriptor providerDescriptor = providerMap.getDefaultProvider()
+                                                                               .getProviderDescriptor();
+                IndexRule rule;
+                if ( isConstraintIndex )
+                {
+                    rule = IndexRule.constraintIndexRule( schemaStorage.newRuleId(), element.getLabelId(),
+                                                          element.getPropertyKeyId(), providerDescriptor,
+                                                          null );
+                }
+                else
+                {
+                    rule = IndexRule.indexRule( schemaStorage.newRuleId(), element.getLabelId(),
+                                                element.getPropertyKeyId(), providerDescriptor );
+                }
+                persistenceManager.createSchemaRule( rule );
+            }
+
+            @Override
+            public void visitRemovedIndex( IndexDescriptor element, boolean isConstraintIndex )
+            {
+                try
+                {
+                    IndexRule rule = schemaStorage
+                            .indexRule( element.getLabelId(), element.getPropertyKeyId() );
+                    persistenceManager.dropSchemaRule( rule.getId() );
+                }
+                catch ( SchemaRuleNotFoundException e )
+                {
+                    throw new ThisShouldNotHappenError(
+                            "Tobias Lindaaker",
+                            "Index to be removed should exist, since its existence should have " +
+                            "been validated earlier and the schema should have been locked." );
+                }
+            }
+
+            @Override
+            public void visitAddedConstraint( UniquenessConstraint element, long indexId )
+            {
+                try
+                {
+                    constraintIndexCreator.validateConstraintIndex( element, indexId );
+                }
+                catch ( CreateConstraintFailureException e )
+                {
+                    // TODO: Revisit decision to rethrow as RuntimeException.
+                    throw new ConstraintCreationException( e );
+                }
+                clearState.set( true );
+                long constraintId = schemaStorage.newRuleId();
+                persistenceManager.createSchemaRule( UniquenessConstraintRule.uniquenessConstraintRule(
+                        constraintId, element.label(), element.propertyKeyId(), indexId ) );
+                persistenceManager.setConstraintIndexOwner( indexId, constraintId );
+            }
+
+            @Override
+            public void visitRemovedConstraint( UniquenessConstraint element )
+            {
+                try
+                {
+                    clearState.set( true );
+                    UniquenessConstraintRule rule = schemaStorage
+                            .uniquenessConstraint( element.label(), element.propertyKeyId() );
+                    persistenceManager.dropSchemaRule( rule.getId() );
+                }
+                catch ( SchemaRuleNotFoundException e )
+                {
+                    throw new ThisShouldNotHappenError(
+                            "Tobias Lindaaker",
+                            "Constraint to be removed should exist, since its existence should " +
+                            "have been validated earlier and the schema should have been locked." );
+                }
+                // Remove the index for the constraint as well
+                visitRemovedIndex( new IndexDescriptor( element.label(), element.propertyKeyId() ), true );
+            }
         }
     }
 }

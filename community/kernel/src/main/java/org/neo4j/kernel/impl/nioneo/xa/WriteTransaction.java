@@ -30,7 +30,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
 import javax.transaction.SystemException;
 import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
@@ -57,6 +56,8 @@ import org.neo4j.kernel.impl.nioneo.store.AbstractDynamicStore;
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
 import org.neo4j.kernel.impl.nioneo.store.IndexRule;
 import org.neo4j.kernel.impl.nioneo.store.InvalidRecordException;
+import org.neo4j.kernel.impl.nioneo.store.LabelStatisticsRecord;
+import org.neo4j.kernel.impl.nioneo.store.LabelStatisticsStore;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenRecord;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenStore;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
@@ -188,6 +189,9 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                 }
             }, false );
     private final Map<Long, Pair<Collection<DynamicRecord>, SchemaRule>> schemaRuleRecords = new HashMap<>();
+
+    private Collection<Pair<LabelStatisticsRecord, LabelStatisticsRecord>> labelStatisticRecords = new ArrayList<>();
+
     private Map<Integer, RelationshipTypeTokenRecord> relationshipTypeTokenRecords;
     private Map<Integer, LabelTokenRecord> labelTokenRecords;
     private Map<Integer, PropertyKeyTokenRecord> propertyKeyTokenRecords;
@@ -197,6 +201,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
     private final ArrayList<Command.PropertyCommand> propCommands = new ArrayList<>();
     private final ArrayList<Command.RelationshipCommand> relCommands = new ArrayList<>();
     private final ArrayList<Command.SchemaRuleCommand> schemaRuleCommands = new ArrayList<>();
+    private final ArrayList<Command.LabelStatisticsCommand> labelStatisticCommands = new ArrayList<>();
     private ArrayList<Command.RelationshipTypeTokenCommand> relationshipTypeTokenCommands;
     private ArrayList<Command.LabelTokenCommand> labelTokenCommands;
     private ArrayList<Command.PropertyKeyTokenCommand> propertyKeyTokenCommands;
@@ -257,6 +262,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                            relRecords.changeSize() +
                            propertyRecords.changeSize() +
                            schemaRuleRecords.size() +
+                           labelStatisticRecords.size() +
                            (propertyKeyTokenRecords != null ? propertyKeyTokenRecords.size() : 0) +
                            (relationshipTypeTokenRecords != null ? relationshipTypeTokenRecords.size() : 0) +
                            (labelTokenRecords != null ? labelTokenRecords.size() : 0);
@@ -348,6 +354,7 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             propCommands.add( command );
             commands.add( command );
         }
+
         for ( Pair<Collection<DynamicRecord>, SchemaRule> records : schemaRuleRecords.values() )
         {
             Command.SchemaRuleCommand command = new Command.SchemaRuleCommand( neoStore.getSchemaStore(),
@@ -356,6 +363,16 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
             schemaRuleCommands.add( command );
             commands.add( command );
         }
+
+        LabelStatisticsStore statisticsStore = neoStore.getLabelStatisticsStore();
+        for ( Pair<LabelStatisticsRecord, LabelStatisticsRecord> entry : labelStatisticRecords )
+        {
+            Command.LabelStatisticsCommand command =
+                new Command.LabelStatisticsCommand( statisticsStore, entry.first(), entry.other() );
+            labelStatisticCommands.add( command );
+            commands.add( command );
+        }
+
         assert commands.size() == noOfCommands : "Expected " + noOfCommands
                                                  + " final commands, got "
                                                  + commands.size() + " instead";
@@ -420,6 +437,10 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
         else if ( xaCommand instanceof Command.SchemaRuleCommand )
         {
             schemaRuleCommands.add( (Command.SchemaRuleCommand) xaCommand );
+        }
+        else if ( xaCommand instanceof Command.LabelStatisticsCommand )
+        {
+            labelStatisticCommands.add( (Command.LabelStatisticsCommand) xaCommand );
         }
         else
         {
@@ -733,6 +754,11 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                 default:
                     cacheAccess.addSchemaRule( command.getSchemaRule() );
                 }
+            }
+
+            for ( Command.LabelStatisticsCommand command : labelStatisticCommands )
+            {
+                command.execute();
             }
 
             if ( neoStoreCommand != null )
@@ -2144,5 +2170,20 @@ public class WriteTransaction extends XaTransaction implements NeoStoreTransacti
                  deserializeSchemaRule( constraintIndexId, getSchemaStore().getRecords( constraintIndexId ) ));
         indexRule = indexRule.withOwningConstraint( constraintId );
         addSchemaRule( Pair.of( getSchemaStore().allocateFrom( indexRule ), (SchemaRule) indexRule ) );
+    }
+
+    @Override
+    public void updateLabelStatistics( Map<Integer, Long> labelStatistics )
+    {
+        LabelStatisticsStore labelStatisticsStore = neoStore.getLabelStatisticsStore();
+
+        for ( Map.Entry<Integer, Long> entry : labelStatistics.entrySet() )
+        {
+            int labelId = entry.getKey();
+            LabelStatisticsRecord before = labelStatisticsStore.forceGetRecord( labelId );
+            long newCount = before.getCount() + entry.getValue();
+            LabelStatisticsRecord after = new LabelStatisticsRecord( labelId, newCount );
+            labelStatisticRecords.add( Pair.of( before, after ) );
+        }
     }
 }

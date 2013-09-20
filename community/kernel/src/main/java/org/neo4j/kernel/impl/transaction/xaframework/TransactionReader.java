@@ -25,6 +25,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.Collection;
 
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
+import org.neo4j.kernel.impl.nioneo.store.LabelStatisticsRecord;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenRecord;
 import org.neo4j.kernel.impl.nioneo.store.NeoStoreRecord;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
@@ -83,6 +84,8 @@ public class TransactionReader
         void visitDeleteSchemaRule( int localId, Collection<DynamicRecord> records, long id );
 
         void visitUpdateSchemaRule( int localId, Collection<DynamicRecord> records );
+
+        void visitUpdateLabelStatistics( int localId, LabelStatisticsRecord record );
     }
 
     private static final XaCommandFactory COMMAND_FACTORY = new XaCommandFactory()
@@ -255,6 +258,12 @@ public class TransactionReader
                     visitor.visitUpdateSchemaRule( localId, records );
                 }
             }
+        }
+
+        @Override
+        public void visitLabelStatisticsRecord( LabelStatisticsRecord record )
+        {
+            visitor.visitUpdateLabelStatistics( localId, record );
         }
     }
 }

@@ -73,6 +73,7 @@ public class NeoStore extends AbstractStore
     private RelationshipTypeTokenStore relTypeStore;
     private LabelTokenStore labelTokenStore;
     private SchemaStore schemaStore;
+    private LabelStatisticsStore labelStatisticsStore;
     private final TxHook txHook;
     private long lastCommittedTx = -1;
 
@@ -84,7 +85,7 @@ public class NeoStore extends AbstractStore
                      StringLogger stringLogger, TxHook txHook,
                      RelationshipTypeTokenStore relTypeStore, LabelTokenStore labelTokenStore,
                      PropertyStore propStore, RelationshipStore relStore,
-                     NodeStore nodeStore, SchemaStore schemaStore )
+                     NodeStore nodeStore, SchemaStore schemaStore, LabelStatisticsStore labelStatisticsStore )
     {
         super( fileName, conf, IdType.NEOSTORE_BLOCK, idGeneratorFactory, windowPoolFactory,
                 fileSystemAbstraction, stringLogger);
@@ -94,6 +95,7 @@ public class NeoStore extends AbstractStore
         this.relStore = relStore;
         this.nodeStore = nodeStore;
         this.schemaStore = schemaStore;
+        this.labelStatisticsStore = labelStatisticsStore;
         REL_GRAB_SIZE = conf.get( Configuration.relationship_grab_size );
         this.txHook = txHook;
 
@@ -250,13 +252,18 @@ public class NeoStore extends AbstractStore
             schemaStore.close();
             schemaStore = null;
         }
+        if ( labelStatisticsStore != null )
+        {
+            labelStatisticsStore.close();
+            labelStatisticsStore = null;
+        }
     }
 
     @Override
     public void flushAll()
     {
         if ( relTypeStore == null || labelTokenStore == null || propStore == null || relStore == null ||
-                nodeStore == null || schemaStore == null )
+                nodeStore == null || schemaStore == null || labelStatisticsStore == null )
         {
             return;
         }
@@ -267,6 +274,7 @@ public class NeoStore extends AbstractStore
         relStore.flushAll();
         nodeStore.flushAll();
         schemaStore.flushAll();
+        labelStatisticsStore.flushAll();
     }
 
     @Override
@@ -412,6 +420,7 @@ public class NeoStore extends AbstractStore
             relTypeStore.setRecovered();
             labelTokenStore.setRecovered();
             schemaStore.setRecovered();
+            labelStatisticsStore.setRecovered();
         }
         else
         {
@@ -422,6 +431,7 @@ public class NeoStore extends AbstractStore
             relTypeStore.unsetRecovered();
             labelTokenStore.unsetRecovered();
             schemaStore.unsetRecovered();
+            labelStatisticsStore.unsetRecovered();
         }
     }
 
@@ -532,6 +542,14 @@ public class NeoStore extends AbstractStore
     }
 
     /**
+     * @return the label statistics store.
+     */
+    public LabelStatisticsStore getLabelStatisticsStore()
+    {
+        return labelStatisticsStore;
+    }
+
+    /**
      * The relationship store.
      *
      * @return The relationship store
@@ -580,6 +598,7 @@ public class NeoStore extends AbstractStore
         relStore.makeStoreOk();
         nodeStore.makeStoreOk();
         schemaStore.makeStoreOk();
+        labelStatisticsStore.makeStoreOk();
         super.makeStoreOk();
     }
 
@@ -592,6 +611,7 @@ public class NeoStore extends AbstractStore
         relStore.rebuildIdGenerators();
         nodeStore.rebuildIdGenerators();
         schemaStore.rebuildIdGenerators();
+        labelStatisticsStore.makeStoreOk();
         super.rebuildIdGenerators();
     }
 
@@ -604,6 +624,7 @@ public class NeoStore extends AbstractStore
         relStore.updateHighId();
         nodeStore.updateIdGenerators();
         schemaStore.updateHighId();
+        labelStatisticsStore.updateHighId();
     }
 
     public int getRelationshipGrabSize()
@@ -640,7 +661,8 @@ public class NeoStore extends AbstractStore
     public boolean isStoreOk()
     {
         return getStoreOk() && relTypeStore.getStoreOk() && labelTokenStore.getStoreOk() &&
-            propStore.getStoreOk() && relStore.getStoreOk() && nodeStore.getStoreOk() && schemaStore.getStoreOk();
+            propStore.getStoreOk() && relStore.getStoreOk() && nodeStore.getStoreOk() &&
+            schemaStore.getStoreOk() && labelStatisticsStore.getStoreOk();
     }
 
     @Override
@@ -650,6 +672,7 @@ public class NeoStore extends AbstractStore
 
         super.logVersions( msgLog );
         schemaStore.logVersions( msgLog );
+        labelStatisticsStore.logVersions( msgLog );
         nodeStore.logVersions( msgLog );
         relStore.logVersions( msgLog );
         relTypeStore.logVersions( msgLog );
@@ -664,6 +687,7 @@ public class NeoStore extends AbstractStore
     {
         msgLog.logLine( "Id usage:" );
         schemaStore.logIdUsage( msgLog );
+        labelStatisticsStore.logIdUsage( msgLog );
         nodeStore.logIdUsage( msgLog );
         relStore.logIdUsage( msgLog );
         relTypeStore.logIdUsage( msgLog );

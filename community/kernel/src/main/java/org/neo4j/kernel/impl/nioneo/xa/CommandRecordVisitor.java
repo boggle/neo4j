@@ -22,6 +22,7 @@ package org.neo4j.kernel.impl.nioneo.xa;
 import java.util.Collection;
 
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
+import org.neo4j.kernel.impl.nioneo.store.LabelStatisticsRecord;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenRecord;
 import org.neo4j.kernel.impl.nioneo.store.NeoStoreRecord;
 import org.neo4j.kernel.impl.nioneo.store.NodeRecord;
@@ -51,4 +52,6 @@ public interface CommandRecordVisitor
     void visitNeoStore( NeoStoreRecord record );
 
     void visitSchemaRule( Collection<DynamicRecord> records );
+
+    void visitLabelStatisticsRecord( LabelStatisticsRecord record );
 }

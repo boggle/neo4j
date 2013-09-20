@@ -335,4 +335,6 @@ public interface NeoStoreTransaction
     PrimitiveLongIterator getLabelsForNode( long nodeId );
 
     void setConstraintIndexOwner( long constraintIndexId, long constraintId );
+
+    void updateLabelStatistics( Map<Integer, Long> labelStatistics );
 }

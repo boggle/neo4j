@@ -33,6 +33,8 @@ import org.neo4j.kernel.impl.nioneo.store.AbstractBaseRecord;
 import org.neo4j.kernel.impl.nioneo.store.AbstractDynamicStore;
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
 import org.neo4j.kernel.impl.nioneo.store.IndexRule;
+import org.neo4j.kernel.impl.nioneo.store.LabelStatisticsRecord;
+import org.neo4j.kernel.impl.nioneo.store.LabelStatisticsStore;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenRecord;
 import org.neo4j.kernel.impl.nioneo.store.LabelTokenStore;
 import org.neo4j.kernel.impl.nioneo.store.NeoStore;
@@ -334,6 +336,7 @@ public abstract class Command extends XaCommand
     private static final byte NEOSTORE_COMMAND = (byte) 6;
     private static final byte SCHEMA_RULE_COMMAND = (byte) 7;
     private static final byte LABEL_KEY_COMMAND = (byte) 8;
+    private static final byte LABEL_STATISTICS_COMMAND = (byte) 9;
 
     abstract void removeFromCache( CacheAccessBackDoor cacheAccess );
 
@@ -1155,6 +1158,82 @@ public abstract class Command extends XaCommand
         }
     }
 
+    static class LabelStatisticsCommand extends Command
+    {
+        private final LabelStatisticsStore store;
+        private final LabelStatisticsRecord before;
+        private final LabelStatisticsRecord after;
+
+        LabelStatisticsCommand( LabelStatisticsStore store, LabelStatisticsRecord before, LabelStatisticsRecord after )
+        {
+            super( before.getId(), before.isStored() ? Mode.UPDATE : Mode.CREATE );
+            this.store = store;
+            this.before = before;
+            this.after = after;
+        }
+
+        @Override
+        public void accept( CommandRecordVisitor visitor )
+        {
+            visitor.visitLabelStatisticsRecord( after );
+        }
+
+        @Override
+        public String toString()
+        {
+            return "LabelStatistics" + after;
+        }
+
+        @Override
+        void removeFromCache( CacheAccessBackDoor cacheAccess )
+        {
+        }
+
+        @Override
+        public void execute()
+        {
+            store.updateRecord( after );
+        }
+
+        @Override
+        public void writeToFile( LogBuffer buffer ) throws IOException
+        {
+            buffer.put( LABEL_STATISTICS_COMMAND );
+            buffer.putLong( after.getId() );
+            buffer.putLong( before.getCount() );
+            buffer.putLong( after.getCount() );
+            buffer.put( before.isStored() ? (byte) 1 : 0 );
+        }
+
+        public static Command readFromFile( NeoStore neoStore, ReadableByteChannel byteChannel, ByteBuffer buffer )
+                throws IOException
+        {
+            LabelStatisticsStore statisticsStore = neoStore.getLabelStatisticsStore();
+
+            if ( !readAndFlip( byteChannel, buffer, 8 ) )
+                return null;
+
+            long id = buffer.getLong();
+
+            if ( !readAndFlip( byteChannel, buffer, 8 ) )
+                return null;
+            long beforeCount = buffer.getLong();
+
+            if ( !readAndFlip( byteChannel, buffer, 8 ) )
+                return null;
+            long afterCount = buffer.getLong();
+
+            if ( !readAndFlip( byteChannel, buffer, 1 ) )
+                return null;
+            byte stored = buffer.get();
+
+            return new LabelStatisticsCommand( statisticsStore,
+                new LabelStatisticsRecord( id, beforeCount, 1 == stored ),
+                new LabelStatisticsRecord( id, afterCount ) );
+        }
+    }
+
+
     static class SchemaRuleCommand extends Command
     {
         private final IndexingService indexes;
@@ -1314,6 +1393,8 @@ public abstract class Command extends XaCommand
                 return NeoStoreCommand.readFromFile( neoStore, byteChannel, buffer );
             case SCHEMA_RULE_COMMAND:
                 return SchemaRuleCommand.readFromFile( neoStore, indexes, byteChannel, buffer );
+            case LABEL_STATISTICS_COMMAND:
+                return LabelStatisticsCommand.readFromFile( neoStore, byteChannel, buffer );
             case NONE: return null;
             default:
                 throw new IOException( "Unknown command type[" + commandType + "]" );

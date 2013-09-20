@@ -331,6 +331,11 @@ public class PersistenceManager
         getResource( true ).setConstraintIndexOwner( constraintIndexId, constraintId );
     }
 
+    public void updateLabelStatistics( Map<Integer, Long> labelStatistics )
+    {
+        getResource( true ).updateLabelStatistics( labelStatistics );
+    }
+
     private class TxCommitHook implements Synchronization
     {
         private final Transaction tx;
