@@ -21,6 +21,7 @@ package org.neo4j.cypher.internal.compiler.v2_0.parser
 
 import org.neo4j.cypher.internal.compiler.v2_0._
 import org.parboiled.scala._
+import org.neo4j.cypher.internal.compiler.v2_0.commands.SortItem
 
 trait Expressions extends Parser
   with Literals
@@ -166,7 +167,11 @@ trait Expressions extends Parser
   }
 
   def ListComprehension : Rule1[ast.ListComprehension] = rule("[") {
-    group("[" ~~ FilterExpression ~ optional(WS ~ "|" ~~ Expression) ~~ "]") ~>> token ~~> ast.ListComprehension
+    group("[" ~~ FilterExpression ~ optional(ComprehensionExpression) ~~ "]") ~>> token ~~> ast.ListComprehension
+  }
+
+  def ComprehensionExpression : Rule1[ast.ComprehensionExpression] = rule("|") {
+    group(WS ~ "|" ~~ Expression ~ optional(Order)) ~>> token ~~> ast.ComprehensionExpression
   }
 
   def CaseExpression : Rule1[ast.CaseExpression] = rule("CASE") {
@@ -182,4 +187,14 @@ trait Expressions extends Parser
   private def CaseAlternatives : Rule2[ast.Expression, ast.Expression] = rule("WHEN") {
     keyword("WHEN") ~~ Expression ~~ keyword("THEN") ~~ Expression
   }
+
+  def Order : Rule1[ast.OrderBy] = rule {
+    group(keyword("ORDER", "BY") ~~ oneOrMore(SortItem, separator = CommaSep)) ~>> token ~~> ast.OrderBy
+  }
+
+  def SortItem : Rule1[ast.SortItem] = rule (
+    group(Expression ~~ (keyword("DESCENDING") | keyword("DESC"))) ~>> token ~~> ast.DescSortItem
+      | group(Expression ~~ optional(keyword("ASCENDING") | keyword("ASC"))) ~>> token ~~> ast.AscSortItem
+  )
+
 }

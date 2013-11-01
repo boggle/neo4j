@@ -28,13 +28,13 @@ import org.scalatest.Assertions
 
 class ListComprehensionTest extends Assertions {
 
-  val dummyExpression = DummyExpression(
+  val collectionExpression = DummyExpression(
     TypeSet(CollectionType(NodeType()), BooleanType(), CollectionType(StringType())),
     DummyToken(2,3))
 
   @Test
   def withoutExtractExpressionShouldHaveCollectionTypesOfInnerExpression() {
-    val filter = ListComprehension(Identifier("x", DummyToken(5,6)), dummyExpression, None, None, DummyToken(0, 10))
+    val filter = ListComprehension(Identifier("x", DummyToken(5, 6)), collectionExpression, None, None, DummyToken(0, 10))
     val result = filter.semanticCheck(Expression.SemanticContext.Simple)(SemanticState.clean)
     assertEquals(Seq(), result.errors)
     assertEquals(Set(CollectionType(NodeType()), BooleanType(), CollectionType(StringType())), filter.types(result.state))
@@ -49,7 +49,8 @@ class ListComprehensionTest extends Assertions {
       def toCommand = ???
     }
 
-    val filter = ListComprehension(Identifier("x", DummyToken(5,6)), dummyExpression, None, Some(extractExpression), DummyToken(0, 10))
+    val filter = ListComprehension(Identifier("x", DummyToken(5, 6)), collectionExpression, None,
+      Some(ComprehensionExpression(extractExpression, None, DummyToken(5, 99))), DummyToken(0, 10))
     val result = filter.semanticCheck(Expression.SemanticContext.Simple)(SemanticState.clean)
     assertEquals(Seq(), result.errors)
     assertEquals(Set(CollectionType(NodeType()), CollectionType(NumberType())), filter.types(result.state))
@@ -68,8 +69,51 @@ class ListComprehensionTest extends Assertions {
       def toCommand = ???
     }
 
-    val filter = ListComprehension(Identifier("x", DummyToken(2,3)), dummyExpression, Some(predicate), None, DummyToken(0, 10))
+    val filter = ListComprehension(Identifier("x", DummyToken(2, 3)), collectionExpression, Some(predicate), None, DummyToken(0, 10))
     val result = filter.semanticCheck(Expression.SemanticContext.Simple)(SemanticState.clean)
+    assertEquals(Seq(error), result.errors)
+    assertEquals(None, result.state.symbol("x"))
+  }
+
+  @Test
+  def shouldSemanticCheckOrderBy() {
+    // [x in [1,2,3] | x ORDER BY x.name ]
+
+    // [1, 2, 3]
+    val collectionExpression = DummyExpression(
+      TypeSet(CollectionType(NumberType())),
+      DummyToken(2,3))
+
+    val error = SemanticError("dummy error", DummyToken(8, 9))
+
+    // | x
+    val extractExpression = new Expression with SimpleTypedExpression {
+      def token: InputToken = DummyToken(2, 3)
+
+      protected def possibleTypes: TypeSet = Set(NumberType())
+
+      def toCommand = ???
+    }
+
+    // x.name
+    val sortExpression = new Expression {
+      def token = DummyToken(7, 9)
+
+      def semanticCheck(ctx: SemanticContext) = s => {
+        assertEquals(Set(NumberType()), s.symbolTypes("x"))
+        SemanticCheckResult.error(s, error)
+      }
+
+      def toCommand = ???
+    }
+
+    // ORDER BY x.name
+    val orderBy = Some(OrderBy(Seq(AscSortItem(sortExpression, DummyToken(4, 2))), DummyToken(4, 3)))
+    val comprehensionExpression = ComprehensionExpression(extractExpression, orderBy, DummyToken(7, 6))
+
+    val filter = ListComprehension(Identifier("x", DummyToken(2, 3)), collectionExpression, None, Some(comprehensionExpression), DummyToken(0, 10))
+    val result = filter.semanticCheck(Expression.SemanticContext.Simple)(SemanticState.clean)
+
     assertEquals(Seq(error), result.errors)
     assertEquals(None, result.state.symbol("x"))
   }

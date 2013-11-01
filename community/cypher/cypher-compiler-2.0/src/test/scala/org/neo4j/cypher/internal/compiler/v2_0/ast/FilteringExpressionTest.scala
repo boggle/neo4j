@@ -29,7 +29,7 @@ import org.scalatest.Assertions
 
 class FilteringExpressionTest extends Assertions {
 
-  case class TestableFilteringExpression(identifier: Identifier, expression: Expression, innerPredicate: Option[Expression]) extends FilteringExpression {
+  case class TestableFilteringExpression(identifier: Identifier, collection: Expression, innerPredicate: Option[Expression]) extends FilteringExpression {
     def name = "Testable Filter Expression"
     def token = DummyToken(0,10)
 

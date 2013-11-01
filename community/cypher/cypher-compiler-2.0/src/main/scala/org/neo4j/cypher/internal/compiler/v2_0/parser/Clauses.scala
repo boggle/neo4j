@@ -21,6 +21,7 @@ package org.neo4j.cypher.internal.compiler.v2_0.parser
 
 import org.neo4j.cypher.internal.compiler.v2_0.ast
 import org.parboiled.scala._
+import org.neo4j.graphdb.Traverser.Order
 
 trait Clauses extends Parser
   with StartPoints
@@ -122,15 +123,6 @@ trait Clauses extends Parser
   private def ReturnItem : Rule1[ast.ReturnItem] = rule (
       group(Expression ~~ keyword("AS") ~~ Identifier) ~>> token ~~> ast.AliasedReturnItem
     | Expression ~>> token ~~> ast.UnaliasedReturnItem
-  )
-
-  private def Order : Rule1[ast.OrderBy] = rule {
-    group(keyword("ORDER", "BY") ~~ oneOrMore(SortItem, separator = CommaSep)) ~>> token ~~> ast.OrderBy
-  }
-
-  private def SortItem : Rule1[ast.SortItem] = rule (
-      group(Expression ~~ (keyword("DESCENDING") | keyword("DESC"))) ~>> token ~~> ast.DescSortItem
-    | group(Expression ~~ optional(keyword("ASCENDING") | keyword("ASC"))) ~>> token ~~> ast.AscSortItem
   )
 
   private def Skip : Rule1[ast.Skip] = rule {

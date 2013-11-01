@@ -35,7 +35,7 @@ class FilterExpressionTest extends Assertions {
   def shouldHaveCollectionTypesOfInnerExpression() {
     val filter = FilterExpression(
       identifier = Identifier("x", DummyToken(5, 6)),
-      expression = dummyExpression,
+      collection = dummyExpression,
       innerPredicate = Some(True(DummyToken(5, 6))),
       token = DummyToken(0, 10))
     val result = filter.semanticCheck(Expression.SemanticContext.Simple)(SemanticState.clean)
@@ -47,7 +47,7 @@ class FilterExpressionTest extends Assertions {
   def shouldRaiseSyntaxErrorIfMissingPredicate() {
     val filter = FilterExpression(
       identifier = Identifier("x", DummyToken(5, 6)),
-      expression = dummyExpression,
+      collection = dummyExpression,
       innerPredicate = None,
       token = DummyToken(0, 10))
     val result = filter.semanticCheck(Expression.SemanticContext.Simple)(SemanticState.clean)
