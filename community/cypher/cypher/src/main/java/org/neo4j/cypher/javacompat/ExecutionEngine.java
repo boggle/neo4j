@@ -122,4 +122,20 @@ public class ExecutionEngine
     {
         return inner.prettify(query);
     }
+
+
+    /**
+     * Turns a valid Cypher query and returns it with keywords in uppercase,
+     * and new-lines in the appropriate places. This method also avoids exceeding the given lineWidth by
+     * indenting and putting any extra characters on the next line.
+     *
+     * @param query The query to make pretty
+     * @param lineWidth maximum lineWidth
+     * @param indent number of spaces to use when indenting due to line length overflow
+     * @return The same query, but prettier
+     */
+    public String prettify( String query, int lineWidth, int indent )
+    {
+        return inner.prettify(query, lineWidth, indent);
+    }
 }

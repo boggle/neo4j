@@ -122,6 +122,8 @@ class ExecutionEngine(graph: GraphDatabaseService, logger: StringLogger = String
 
   def prettify(query:String): String = Prettifier(query)
 
+  def prettify(query:String, lineWidth: Int, indent: Int): String = Prettifier(query, lineWidth, indent)
+
   private def createCorrectCompiler() =
     optGraphAs[InternalAbstractGraphDatabase]
       .andThen(_.getConfig.get(GraphDatabaseSettings.cypher_parser_version))

@@ -139,67 +139,69 @@ class PrettifierParser extends Parser with Base with Strings {
 case object Prettifier extends (String => String) {
   val parser = new PrettifierParser
 
-  def apply(input: String) = {
-    val builder = new StringBuilder
+  def apply(input: String) = collect(input, new StringTokenCollector())
 
+  def apply(input: String, lineWidth: Int, indent: Int) =
+    collect(input, new BreakingStringTokenCollector(lineWidth, indent))
+
+  def collect(input: String, collector: TokenCollector): String = {
     var tokens = parser.parse(input)
+
     while (tokens.nonEmpty) {
       val tail = tokens.tail
-      builder ++= insertBreak(tokens.head, tail)
+      insertBreak(tokens.head, tail, collector)
       tokens = tail
     }
 
-    builder.toString()
+    collector.result
   }
 
-  val space = " "
-  val newline = System.getProperty("line.separator")
-
-  def insertBreak(token: SyntaxToken, tail: Seq[SyntaxToken]): String = {
+  def insertBreak(token: SyntaxToken, tail: Seq[SyntaxToken], collector: TokenCollector) = {
     if (tail.isEmpty)
-      token.toString
+      collector += (token, NoBreak)
     else {
       (token, tail.head) match {
         // FOREACH : <NEXT>
-        case (_: SyntaxToken,         _) if token.text.endsWith("|") => token.toString + space
-        case (_: SyntaxToken,         _) if token.text.endsWith(":") => token.toString + space
+        case (_: SyntaxToken,         _) if token.text.endsWith("|") => collector += (token, Blank)
+        case (_: SyntaxToken,         _) if token.text.endsWith(":") => collector += (token, Blank)
 
         // <NON-BREAKING-KW> <NEXT>
-        case (_: NonBreakingKeywords, _:SyntaxToken)                 => token.toString + space
+        case (_: NonBreakingKeywords, _:SyntaxToken)                 => collector += (token, Blank)
 
         // Never break between keywords
-        case (_:KeywordToken,         _:KeywordToken)                => token.toString + space
+        case (_:KeywordToken,         _:KeywordToken)                => collector += (token, Blank)
 
         // <HEAD> <BREAKING-KW>
-        case (_:SyntaxToken,          _:BreakingKeywords)            => token.toString + newline
+        case (_:SyntaxToken,          _:BreakingKeywords)            => collector += (token, NewLine)
 
         // <KW> <OPEN-GROUP>
-        case (_:KeywordToken,         _:OpenGroup)                   => token.toString + space
+        case (_:KeywordToken,         _:OpenGroup)                   => collector += (token, Blank)
 
         // <{> <NEXT>
-        case (_@OpenGroup("{"),       _:SyntaxToken)                 => token.toString + space
+        case (_@OpenGroup("{"),       _:SyntaxToken)                 => collector += (token, Blank)
 
         // <CLOSE-GROUP> <KW>
-        case (_:CloseGroup,           _:KeywordToken)                => token.toString + space
+        case (_:CloseGroup,           _:KeywordToken)                => collector += (token, Blank)
 
         // <GROUPING> <NEXT>
-        case (_:GroupingToken,        _:SyntaxToken)                 => token.toString
+        case (_:GroupingToken,        _:SyntaxToken)                 => collector += (token, NoBreak)
 
         // <HEAD> <{>
-        case (_:SyntaxToken,            OpenGroup("{"))              => token.toString + space
+        case (_:SyntaxToken,            OpenGroup("{"))              => collector += (token, Blank)
 
         // <HEAD> <}>
-        case (_:SyntaxToken,            CloseGroup("}"))             => token.toString + space
+        case (_:SyntaxToken,            CloseGroup("}"))             => collector += (token, Blank)
 
         // <HEAD> <GROUPING>
-        case (_:SyntaxToken,          _:GroupingToken)               => token.toString
+        case (_:SyntaxToken,          _:GroupingToken)               => collector += (token, NoBreak)
 
         // <HEAD> <COMMA>
-        case (_:SyntaxToken,          Comma)                         => token.toString
+        case (_:SyntaxToken,          Comma)                         => collector += (token, NoBreak)
 
         // default
-        case _                                                       => token.toString + space
+        case _                                                       => collector += (token, Blank)
       }
     }
   }
 }
+

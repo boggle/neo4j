@@ -115,6 +115,7 @@ class PrettifierTest extends Assertions {
       "MATCH a%nWHERE a.name='A'%nRETURN a.age > 30, \"I'm a literal\", a-->()",
       "mATCH a WhERE a.name='A' RETURN a.age > 30, \"I'm a literal\", a-->()")
   }
+
   private def assertIsPrettified(expected: String, query: String) {
     assertEquals(String.format(expected), Prettifier(query))
   }
