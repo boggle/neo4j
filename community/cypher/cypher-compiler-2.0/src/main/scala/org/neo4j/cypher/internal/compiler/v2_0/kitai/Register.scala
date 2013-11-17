@@ -19,38 +19,12 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_0.kitai
 
-abstract class Register[T] {
-  def name: String
+class Register[T] {
+  def apply(cursor: Cursor): Accessor[T] = cursor(this)
 }
 
-trait RRegister[+T] extends (Row => T) {
-  self: Register[T] =>
-
-  def apply(i: Row): T
+object Registers {
+  def apply[A](elems: A*): Registers = Registers(Set(elems: _*))
 }
 
-trait WRegister[-T] {
-  self: Register[T] =>
-
-  def update(i: Row, value: T): Unit
-}
-
-abstract class RWRegister[T] extends Register[T] with RRegister[T] with WRegister[T]
-
-abstract class Registers(all: Set[Register]) {
-
-  val forAccessing: Set[Register[_]] = all.flatMap {
-    case r: Register[_] with RRegister[_] with WRegister[_] => Some(r)
-    case _                                                  => None
-  }
-
-  val forReading = all.flatMap {
-    case r: Register[_] with RRegister[_] => Some(r)
-    case _                                => None
-  }
-
-  val forWriting = all.flatMap {
-    case w: Register[_] with WRegister[_] => Some(w)
-    case _                                => None
-  }
-}
+final case class Registers(all: Set[Register[_]])

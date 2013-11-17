@@ -19,10 +19,18 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_0.kitai
 
-abstract class RowPool {
-  def acquire: Row
-  def release(row: Row)
+import scala.collection.mutable
 
-  def acquireSlice(amount: Int): Row
-  def releaseSlice(first: Row, amount: Int)
+trait RowPool {
+  def newCursorBuilder: CursorBuilder
+
+  def newCursor(registers: Registers): Cursor = {
+    val builder = newCursorBuilder
+    for ( register <- registers.all ) {
+      builder += register
+    }
+    builder.result()
+  }
 }
+
+trait CursorBuilder extends mutable.Builder[Register[_], Cursor]

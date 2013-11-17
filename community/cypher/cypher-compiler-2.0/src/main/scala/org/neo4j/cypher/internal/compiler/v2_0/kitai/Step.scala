@@ -19,19 +19,88 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_0.kitai
 
-import org.neo4j.cypher.internal.compiler.v2_0.pipes.QueryState
-
 abstract class Step {
-  def apply(row: Row, pool: RowPool)(implicit qs: QueryState) = apply(row, row, pool)
-
-  def apply(first: Row, last: Row, pool: RowPool)(implicit qs: QueryState) = {
-    var index = first
-    while ( index <= last ) {
-      apply(index, pool)
-      index = index.nextRow
-    }
-  }
-
+  def apply(cursor: Cursor, rowPool: RowPool): Cursor
   def registers: Registers
 }
 
+case class MapStep[T](register: Register[T], f: T => T) extends Step {
+
+  def apply(cursor: Cursor, rowPool: RowPool): Cursor = {
+    val registerA = register(cursor)
+    
+    for ( row <- cursor ) {
+      registerA.value = f(registerA.value)
+    }
+    cursor.rewind()
+  }
+
+  override val registers = Registers(register)
+}
+
+case class FilterStep[T](register: Register[T], f: T => Boolean) extends Step {
+
+  def apply(cursor: Cursor, rowPool: RowPool): Cursor =  {
+    val registerA = register(cursor)
+
+    for ( row <- cursor ) {
+      if (! f(registerA.value)) {
+        cursor.remove()
+      }
+    }
+    cursor.rewind()
+  }
+
+  override val registers = Registers(Set(register))
+}
+
+case class FlatMapStep[T](register: Register[T], f: T => Seq[T]) extends Step {
+
+  def apply(cursor: Cursor, rowPool: RowPool): Cursor =  {
+    val registers = cursor.registers
+    val inputA = register(cursor)
+    val outputCursor = rowPool.newCursor(registers)
+    val outputA = register(outputCursor)
+    val rowCopier = RowCopier(cursor, outputCursor, registers)
+
+    for ( row <- cursor ) {
+      for ( value <- f(inputA.value) ) {
+        outputCursor.next()
+        rowCopier.copy()
+        outputA.value = value
+      }
+    }
+    outputCursor.rewind()
+  }
+
+  override val registers = Registers(register)
+}
+
+case class FoldStep[A, B](signal: Register[Boolean],
+                          input: Register[A], 
+                          output: Register[B],
+                          initialValue: B,
+                          f: (B, A) => B) extends Step {
+
+  var currentValue = initialValue
+  
+  override def apply(cursor: Cursor, rowPool: RowPool): Cursor = {
+    val inputA = input(cursor)
+    val signalA = signal(cursor)
+
+    val outputCursor = rowPool.newCursor(Registers(Set(output)))
+    val outputA = output(cursor)
+
+    for ( row <- cursor ) {
+      currentValue = f(currentValue, inputA.value)
+      if (signalA.value) {
+        outputCursor.next()
+        outputA.value = currentValue
+      } 
+    }
+    
+    outputCursor.rewind()
+  }
+
+  override val registers = Registers(input, output)
+}

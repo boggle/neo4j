@@ -21,5 +21,7 @@ package org.neo4j.cypher.internal.compiler.v2_0.kitai
 
 final case class Row(index: Int) extends AnyVal with Ordered[Row] {
   def compare(that: Row): Int = implicitly[Ordering[Int]].compare(index, that.index)
-  def nextRow: Row = Row(index+1)
+
+  def prev: Row = Row(index-1)
+  def next: Row = Row(index+1)
 }
