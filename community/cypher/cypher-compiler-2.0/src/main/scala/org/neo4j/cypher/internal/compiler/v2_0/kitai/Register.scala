@@ -19,7 +19,9 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_0.kitai
 
-trait Register[@specialized(Specialization.cypherTypes) T] {
+import scala.reflect.runtime.universe._
+
+class Register[@specialized(Specialization.cypherTypes) T](implicit val typeTag: TypeTag[T]) {
   def apply(cursor: Cursor): Accessor[T] = cursor(this)
 }
 
