@@ -21,6 +21,8 @@ package org.neo4j.cypher.internal.compiler.v2_0.kitai
 
 import scala.collection.mutable
 
+import scala.reflect.runtime.universe._
+
 trait RowPool {
   def newRowSchemaBuilder: RowSchemaBuilder
 
@@ -33,11 +35,33 @@ trait RowPool {
   }
 }
 
-trait RowSchema {
-  def apply[@specialized(Specialization.cypherTypes)T](register: Register[T]): Accessor[T]
-  def newOutput(sizeHint: Int): Cursor
-  def registers: Registers
-}
-
-
 trait RowSchemaBuilder extends mutable.Builder[Register[_], RowSchema]
+
+//class RowChunkPool(chunkSize: Int) extends RowPool {
+//
+//  def newRowSchemaBuilder: mutable.Builder[Register[_], RowSchema] = new mutable.Builder[Register[_], RowSchema] {
+//    var registerIds: mutable.Map[Register[_], Int] = new mutable.HashMap[Register[_], Int]()
+//    var typeCounts: mutable.Map[TypeTag[_], Int] = new mutable.HashMap[TypeTag[_], Int]()
+//
+//    def +=(elem: Register[_]): this.type = {
+//      val typeTag = Specialization(elem.typeTag)
+//      val count = typeCounts.get(typeTag).getOrElse(-1) + 1
+//      registerIds(elem) = count
+//      typeCounts(typeTag) = count
+//      this
+//    }
+//
+//    def clear(): Unit = {
+//      registerIds.clear()
+//      typeCounts.clear()
+//    }
+//
+//    def result(): RowSchema = new RowSchema {
+//
+//      def registers: Registers = ???
+//
+//      def newOutput(sizeHint: Int): Cursor = ???
+//    }
+//  }
+//
+//}

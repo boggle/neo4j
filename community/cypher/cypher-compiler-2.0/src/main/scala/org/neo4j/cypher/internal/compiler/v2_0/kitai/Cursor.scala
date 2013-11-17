@@ -1,7 +1,7 @@
 package org.neo4j.cypher.internal.compiler.v2_0.kitai
 
 trait Cursor extends Iterator[Row] {
-  def apply[@specialized(Specialization.cypherTypes) T](register: Register[T]): Accessor[T] = rowSchema(register)
+  def apply[@specialized(Specialization.cypherTypes) T](register: Register[T]): Accessor[T]
 
   def current: Row
 
