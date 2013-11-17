@@ -4,7 +4,9 @@ trait Copier {
   def copy()
 }
 
-final case class RegisterCopier[T](input: Cursor, output: Cursor, register: Register[T]) extends Copier {
+final case class RegisterCopier[@specialized(Specialization.cypherTypes) T](input: Cursor,
+                                                                            output: Cursor,
+                                                                            register: Register[T]) extends Copier {
   val inputA = register(input)
   val outputA = register(output)
 
@@ -13,7 +15,9 @@ final case class RegisterCopier[T](input: Cursor, output: Cursor, register: Regi
   }
 }
 
-final case class RowCopier[T](input: Cursor, output: Cursor, registers: Registers) extends Copier {
+final case class RowCopier[@specialized(Specialization.cypherTypes) T](input: Cursor,
+                                                                       output: Cursor,
+                                                                       registers: Registers) extends Copier {
   val copiers = registers.all.map(RegisterCopier(input, output, _))
 
   def copy() {

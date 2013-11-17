@@ -22,10 +22,10 @@ package org.neo4j.cypher.internal.compiler.v2_0.kitai
 import scala.collection.mutable
 
 trait RowPool {
-  def newCursorBuilder: CursorBuilder
+  def newRowSchemaBuilder: RowSchemaBuilder
 
-  def newCursor(registers: Registers): Cursor = {
-    val builder = newCursorBuilder
+  def newRowSchema(registers: Registers): RowSchema = {
+    val builder = newRowSchemaBuilder
     for ( register <- registers.all ) {
       builder += register
     }
@@ -33,4 +33,11 @@ trait RowPool {
   }
 }
 
-trait CursorBuilder extends mutable.Builder[Register[_], Cursor]
+trait RowSchema {
+  def apply[@specialized(Specialization.cypherTypes)T](register: Register[T]): Accessor[T]
+  def newOutput(sizeHint: Int): Cursor
+  def registers: Registers
+}
+
+
+trait RowSchemaBuilder extends mutable.Builder[Register[_], RowSchema]
