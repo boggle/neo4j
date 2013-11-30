@@ -38,16 +38,29 @@ case class AllIdentifiers() extends ReturnColumn {
   def name = "*"
 }
 
-case class ReturnItem(expression: Expression, name: String, renamed: Boolean = false)
+sealed abstract class Unwind
+
+case object RegularUnwind extends Unwind {
+  override def toString = "UNWIND"
+}
+
+case object OptionalUnwind extends Unwind {
+  override def toString ="OPTIONAL UNWIND"
+}
+
+case class ReturnItem(expression: Expression, name: String, renamed: Boolean = false, optUnwind: Option[Unwind] = None)
   extends ReturnColumn {
   def expressions(symbols: SymbolTable) = Map(name -> expression)
 
-  override def toString = if(renamed)
-    s"${expression.toString} AS ${name}"
-  else
-    name
+  override def toString = {
+    val namePart = if (renamed) s"${expression.toString} AS $name" else name
+    optUnwind match {
+      case Some(unwind) => s"$unwind $namePart"
+      case None         => namePart
+    } 
+  }
 
-  def rename(newName: String) = ReturnItem(expression, newName, renamed = true)
+  def rename(newName: String) = copy(name = newName, renamed = true)
 
   def map(f: Expression => Expression): ReturnItem = copy(expression = f(expression))
 }

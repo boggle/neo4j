@@ -65,7 +65,7 @@ sealed trait ClosingClause extends Clause {
 
   protected def extractAggregationExpressions(items: Seq[commands.ReturnColumn]) = {
     val aggregationExpressions = items.collect {
-      case commands.ReturnItem(expression, _, _) => (expression.subExpressions :+ expression).collect {
+      case commands.ReturnItem(expression, _, _, _) => (expression.subExpressions :+ expression).collect {
         case agg: commandexpressions.AggregationExpression => agg
       }
     }.flatten

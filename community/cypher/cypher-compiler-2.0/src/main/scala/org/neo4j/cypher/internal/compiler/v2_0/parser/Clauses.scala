@@ -119,9 +119,17 @@ trait Clauses extends Parser
     | oneOrMore(ReturnItem, separator = CommaSep) ~>> token ~~> ast.ListedReturnItems
   )
 
-  private def ReturnItem : Rule1[ast.ReturnItem] = rule (
-      group(Expression ~~ keyword("AS") ~~ Identifier) ~>> token ~~> ast.AliasedReturnItem
-    | Expression ~>> token ~~> ast.UnaliasedReturnItem
+  private def RegularUnwind : Rule1[Option[ast.Unwind]] =
+    rule("UNWIND") ( group( keyword("UNWIND") ~>> token ~~> ast.RegularUnwind ~~> (Some(_)) ) )
+
+  private def OptionalUnwind : Rule1[Option[ast.Unwind]] =
+    rule("OPTIONAL UNWIND") ( group( keyword("OPTIONAL", "UNWIND") ~>> token ~~> ast.OptionalUnwind ~~> (Some(_)) ) )
+
+  private def Unwind : Rule1[Option[ast.Unwind]] = RegularUnwind | OptionalUnwind | push(None)
+
+  protected def ReturnItem : Rule1[ast.ReturnItem] = rule (
+      group(Unwind ~~ Expression ~~ keyword("AS") ~~ Identifier) ~>> token ~~> ast.AliasedReturnItem
+    | Unwind ~~ Expression ~>> token ~~> ast.UnaliasedReturnItem
   )
 
   private def Order : Rule1[ast.OrderBy] = rule {

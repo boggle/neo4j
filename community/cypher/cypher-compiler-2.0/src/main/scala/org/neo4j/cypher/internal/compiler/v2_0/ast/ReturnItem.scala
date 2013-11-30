@@ -59,19 +59,19 @@ sealed trait ReturnItem extends AstNode with SemanticCheckable {
   def toCommand : commands.ReturnItem
 }
 
-case class UnaliasedReturnItem(expression: Expression, token: InputToken) extends ReturnItem {
+case class UnaliasedReturnItem(optUnwind: Option[Unwind], expression: Expression, token: InputToken) extends ReturnItem {
   val alias = expression match {
     case i: Identifier => Some(i)
     case _ => None
   }
   val name = alias.map(_.name) getOrElse { token.toString.trim }
 
-  def toCommand = commands.ReturnItem(expression.toCommand, name)
+  def toCommand = commands.ReturnItem(expression.toCommand, name, optUnwind = optUnwind.map(_.toCommand))
 }
 
-case class AliasedReturnItem(expression: Expression, identifier: Identifier, token: InputToken) extends ReturnItem {
+case class AliasedReturnItem(optUnwind: Option[Unwind], expression: Expression, identifier: Identifier, token: InputToken) extends ReturnItem {
   val alias = Some(identifier)
   val name = identifier.name
 
-  def toCommand = commands.ReturnItem(expression.toCommand, name, true)
+  def toCommand = commands.ReturnItem(expression.toCommand, name, renamed = true, optUnwind = optUnwind.map(_.toCommand))
 }
