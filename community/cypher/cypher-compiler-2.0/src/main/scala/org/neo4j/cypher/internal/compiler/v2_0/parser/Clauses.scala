@@ -120,10 +120,10 @@ trait Clauses extends Parser
   )
 
   private def RegularUnwind : Rule1[Option[ast.Unwind]] =
-    rule("UNWIND") ( group( (keyword("UNWIND")|keyword("SANTA")) ~>> token ~~> ast.RegularUnwind ~~> (Some(_)) ) )
+    rule("UNWIND") ( group( (keyword("UNWIND")|keyword("SANTA")) ~>> token ~~> ast.Unwind.regular _ ~~> (Some(_)) ) )
 
   private def OptionalUnwind : Rule1[Option[ast.Unwind]] =
-    rule("OPTIONAL UNWIND") ( group( (keyword("OPTIONAL", "UNWIND")|keyword("OPTIONAL", "SANTA")) ~>> token ~~> ast.OptionalUnwind ~~> (Some(_)) ) )
+    rule("OPTIONAL UNWIND") ( group( (keyword("OPTIONAL", "UNWIND")|keyword("OPTIONAL", "SANTA")) ~>> token ~~> ast.Unwind.optional _~~> (Some(_)) ) )
 
   private def Unwind : Rule1[Option[ast.Unwind]] = RegularUnwind | OptionalUnwind | push(None)
 

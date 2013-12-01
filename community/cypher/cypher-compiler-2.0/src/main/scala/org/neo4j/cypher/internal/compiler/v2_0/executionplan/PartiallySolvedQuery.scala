@@ -156,6 +156,10 @@ case class PartiallySolvedQuery(returns: Seq[QueryToken[ReturnColumn]],
         case Unsolved(namedPath) => Unsolved(namedPath.rewrite(f))
         case x => x
       },
+      unwinds = unwinds.map {
+        case Unsolved(unwind) => Unsolved(unwind.rewrite(f))
+        case x => x
+      },
       start = start.map { (qt: QueryToken[StartItem]) => qt.map( _.rewrite(f) ) } )
   }
 

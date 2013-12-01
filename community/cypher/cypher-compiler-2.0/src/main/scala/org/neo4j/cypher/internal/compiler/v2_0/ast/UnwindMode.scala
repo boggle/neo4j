@@ -1,8 +1,3 @@
-package org.neo4j.cypher.internal.compiler.v2_0.ast
-
-import org.neo4j.cypher.internal.compiler.v2_0.InputToken
-import org.neo4j.cypher.internal.compiler.v2_0.commands
-
 /**
  * Copyright (c) 2002-2013 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -22,13 +17,14 @@ import org.neo4j.cypher.internal.compiler.v2_0.commands
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-final case class Unwind(mode: UnwindMode, token: InputToken) extends AstNode {
-  def toUnwindCommand(item: commands.ReturnItem): commands.Unwind =
-    commands.Unwind(mode, item, item.expression.containsAggregate)
+package org.neo4j.cypher.internal.compiler.v2_0.ast
+
+sealed abstract class UnwindMode
+
+object RegularUnwindMode extends UnwindMode {
+  override def toString = "UNWIND"
 }
 
-object Unwind {
-  def regular(token: InputToken) = Unwind(RegularUnwindMode, token)
-  def optional(token: InputToken) = Unwind(OptionalUnwindMode, token)
+object OptionalUnwindMode extends UnwindMode {
+  override def toString = "OPTIONAL UNWIND"
 }
-

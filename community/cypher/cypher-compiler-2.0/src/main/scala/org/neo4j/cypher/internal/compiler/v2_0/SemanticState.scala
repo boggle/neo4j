@@ -83,10 +83,12 @@ case class SemanticState(
     }
     val leftTypes = iteratedTypes.filter(_.isLeft)
     if (! leftTypes.isEmpty) {
-      Left(SemanticError(s"UNWIND encountered non-collection types: ${leftTypes.map(_.left.get)}", token))
+      Left(SemanticError(
+        s"Type mismatch. UNWIND expected collection but found: ${leftTypes.map(_.left.get).mkString(", ")}", token))
     } else {
       val rightTypes = iteratedTypes.map(_.right.get)
-      updateType(expression, TypeSet(AnyType())).constrainType(expression, token, TypeSet(rightTypes))
+      val updatedState: SemanticState = updateType(expression, TypeSet(AnyType()))
+      updatedState.constrainType(expression, token, TypeSet(rightTypes))
     }
   }
   def declareIdentifier(identifier: ast.Identifier, possibleType: CypherType, possibleTypes: CypherType*): Either[SemanticError, SemanticState] =
@@ -135,6 +137,10 @@ case class SemanticState(
   private def updateIdentifier(identifier: ast.Identifier, types: TypeSet, identifiers: Set[ast.Identifier]) =
     copy(symbolTable = symbolTable + ((identifier.name, Symbol(identifiers, types))), typeTable = typeTable + ((identifier, types)))
 
-  private def updateType(expression: ast.Expression, types: TypeSet) =
-    copy(typeTable = typeTable + ((expression, types)))
+  private def updateType(expression: ast.Expression, types: TypeSet) = expression match {
+    case identifier: ast.Identifier =>
+      updateIdentifier(identifier, types, Set(identifier))
+    case _ =>
+      copy(typeTable = typeTable + ((expression, types)))
+  }
 }

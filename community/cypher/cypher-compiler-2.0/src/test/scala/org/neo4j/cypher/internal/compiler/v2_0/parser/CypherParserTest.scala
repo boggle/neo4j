@@ -118,12 +118,12 @@ import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.SimpleCase
 import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Subtract
 import org.neo4j.cypher.internal.compiler.v2_0.ParsedVarLengthRelation
 import org.neo4j.cypher.internal.compiler.v2_0.commands.SingleNode
-import org.neo4j.cypher.internal.compiler.v2_0.commands.RegularUnwind
 import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Distinct
 import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.CountStar
 import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.RelationshipFunction
 import org.neo4j.cypher.internal.compiler.v2_0.commands.LessThan
 import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Avg
+import org.neo4j.cypher.internal.compiler.v2_0.ast.{OptionalUnwindMode, RegularUnwindMode}
 
 class CypherParserTest extends JUnitSuite with Assertions {
   @Test def shouldParseEasiestPossibleQuery() {
@@ -2973,34 +2973,40 @@ class CypherParserTest extends JUnitSuite with Assertions {
   }
 
   @Test def should_collect_unwinds() {
+    // given
+    val item = ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)
+
     test(
       "MATCH (n) RETURN UNWIND [1, 2, 3] AS x",
       Query.
         matches(SingleNode("n")).
-        unwinds(RegularUnwind("x")).
-        returns(ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)))
+        unwinds(Unwind(RegularUnwindMode, item, containedAggregate = false)).
+        returns(item))
   }
 
   @Test def should_collect_unwinds_from_with() {
+    // given
+    val item = ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)
+
     test(
       "MATCH (n) WITH n, UNWIND [1, 2, 3] AS x SET n =  { id: x }",
       Query.
         matches(SingleNode("n")).
-        unwinds(RegularUnwind("x")).
+        unwinds(Unwind(RegularUnwindMode, item, containedAggregate = false)).
         tail(Query.updates(MapPropertySetAction(Identifier("n"), LiteralMap(Map("id" -> Identifier("x"))))).returns())
-        returns(
-          ReturnItem(Identifier("n"), "n", renamed = false),
-          ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)
-        ))
+        returns(ReturnItem(Identifier("n"), "n", renamed = false), item))
   }
 
   @Test def should_collect_optional_unwinds() {
+    // given
+    val item = ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)
+
     test(
       "MATCH (n) RETURN OPTIONAL UNWIND [1, 2, 3] AS x",
       Query.
         matches(SingleNode("n")).
-        unwinds(OptionalUnwind("x")).
-        returns(ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)))
+        unwinds(Unwind(OptionalUnwindMode, item, containedAggregate = false)).
+        returns(item))
   }
 
   val parser = CypherParser()

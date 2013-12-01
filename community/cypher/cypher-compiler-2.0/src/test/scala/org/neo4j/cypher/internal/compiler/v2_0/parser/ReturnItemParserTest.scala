@@ -20,24 +20,24 @@
 package org.neo4j.cypher.internal.compiler.v2_0.parser
 
 import org.neo4j.cypher.internal.compiler.v2_0.{commands, ast}
-import org.neo4j.cypher.internal.compiler.v2_0.commands.{Unwind, expressions}
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions
 
 import org.junit.Test
 import org.parboiled.scala._
-import org.neo4j.cypher.internal.compiler.v2_0.ast.ReturnItem
+import org.neo4j.cypher.internal.compiler.v2_0.ast.{UnwindMode, OptionalUnwindMode, RegularUnwindMode, ReturnItem}
 import org.scalatest.junit.JUnitSuite
 
 class ReturnItemParserTest extends JUnitSuite with ParserTest[ast.ReturnItem, (commands.ReturnItem, Option[commands.Unwind])] with Query with Expressions {
   implicit val parserToTest = ReturnItem ~ EOI
 
   @Test def should_support_regular_unwinding() {
-    parsing("UNWIND x") shouldGive unaliasedItem("x", Some(commands.RegularUnwind("x")))
-    parsing("UNWIND x AS y") shouldGive aliasedItem("x", "y", Some(commands.RegularUnwind("y")))
+    parsing("UNWIND x") shouldGive unaliasedItem("x", Some(RegularUnwindMode))
+    parsing("UNWIND x AS y") shouldGive aliasedItem("x", "y", Some(RegularUnwindMode))
   }
 
   @Test def should_support_optional_unwinding() {
-    parsing("OPTIONAL UNWIND x") shouldGive unaliasedItem("x", Some(commands.OptionalUnwind("x")))
-    parsing("OPTIONAL UNWIND x AS y") shouldGive aliasedItem("x", "y", Some(commands.OptionalUnwind("y")))
+    parsing("OPTIONAL UNWIND x") shouldGive unaliasedItem("x", Some(OptionalUnwindMode))
+    parsing("OPTIONAL UNWIND x AS y") shouldGive aliasedItem("x", "y", Some(OptionalUnwindMode))
   }
 
   @Test def should_support_no_unwinding() {
@@ -47,9 +47,15 @@ class ReturnItemParserTest extends JUnitSuite with ParserTest[ast.ReturnItem, (c
 
   def convert(astNode: ReturnItem): (commands.ReturnItem, Option[commands.Unwind]) = (astNode.toCommand, astNode.toUnwindCommand)
 
-  def unaliasedItem(identifier: String, optUnwind: Option[commands.Unwind]) =
-    (commands.ReturnItem(expressions.Identifier(identifier), identifier, renamed = false), optUnwind)
+  def unaliasedItem(identifier: String, optUnwindMode: Option[UnwindMode]) = {
+    val item: commands.ReturnItem = commands.ReturnItem(expressions.Identifier(identifier), identifier, renamed = false)
+    val optUnwind = optUnwindMode.map(commands.Unwind(_, item, containedAggregate = false))
+    (item, optUnwind)
+  }
 
-  def aliasedItem(identifier: String, name: String, optUnwind: Option[commands.Unwind]) =
-    (commands.ReturnItem(expressions.Identifier(identifier), name, renamed = true), optUnwind)
+  def aliasedItem(identifier: String, name: String, optUnwindMode: Option[UnwindMode]) = {
+    val item: commands.ReturnItem = commands.ReturnItem(expressions.Identifier(identifier), name, renamed = true)
+    val optUnwind = optUnwindMode.map(commands.Unwind(_, item, containedAggregate = false))
+    (item, optUnwind)
+  }
 }

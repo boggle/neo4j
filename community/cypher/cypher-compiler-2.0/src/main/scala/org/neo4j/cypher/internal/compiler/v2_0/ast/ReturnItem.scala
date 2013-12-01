@@ -21,6 +21,7 @@ package org.neo4j.cypher.internal.compiler.v2_0.ast
 
 import org.neo4j.cypher.internal.compiler.v2_0._
 import scala.Some
+import org.neo4j.cypher.internal.compiler.v2_0.symbols.{AnyType, CollectionType}
 
 sealed trait ReturnItems extends AstNode with SemanticCheckable {
   def toCommands : Seq[commands.ReturnColumn]
@@ -61,8 +62,12 @@ sealed trait ReturnItem extends AstNode with SemanticCheckable {
   def optUnwind: Option[ast.Unwind]
 
   def semanticCheck = optUnwind match {
-    case Some(unwind) => semanticCheckExpression then unwind.semanticCheck(expression)
-    case None         => semanticCheckExpression
+    case Some(unwind) =>
+      semanticCheckExpression then
+      expression.constrainType(CollectionType(AnyType())) ifOkThen
+      expression.unwindType()
+    case None =>
+      semanticCheckExpression
   }
 
   private def semanticCheckExpression = expression.semanticCheck(Expression.SemanticContext.Results)
@@ -79,7 +84,7 @@ case class UnaliasedReturnItem(optUnwind: Option[ast.Unwind], expression: Expres
   val name = alias.map(_.name) getOrElse { token.toString.trim }
 
   def toCommand = commands.ReturnItem(expression.toCommand, name)
-  def toUnwindCommand = optUnwind.map(_.toCommand(name))
+  def toUnwindCommand = optUnwind.map(_.toUnwindCommand(toCommand))
 }
 
 case class AliasedReturnItem(optUnwind: Option[ast.Unwind], expression: Expression, identifier: Identifier, token: InputToken) extends ReturnItem {
@@ -87,5 +92,5 @@ case class AliasedReturnItem(optUnwind: Option[ast.Unwind], expression: Expressi
   val name = identifier.name
 
   def toCommand = commands.ReturnItem(expression.toCommand, name, renamed = true)
-  def toUnwindCommand = optUnwind.map(_.toCommand(name))
+  def toUnwindCommand = optUnwind.map(_.toUnwindCommand(toCommand))
 }

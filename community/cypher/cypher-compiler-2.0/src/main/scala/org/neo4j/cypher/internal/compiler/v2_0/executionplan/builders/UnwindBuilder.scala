@@ -1,3 +1,4 @@
+
 /**
  * Copyright (c) 2002-2013 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
@@ -22,6 +23,7 @@ package org.neo4j.cypher.internal.compiler.v2_0.executionplan.builders
 import org.neo4j.cypher.internal.compiler.v2_0.executionplan.{ExecutionPlanInProgress, PlanBuilder}
 import org.neo4j.cypher.internal.compiler.v2_0.spi.PlanContext
 import org.neo4j.cypher.internal.compiler.v2_0.pipes.UnwindPipe
+import org.neo4j.cypher.InvalidExpressionException
 
 class UnwindBuilder extends PlanBuilder {
 
@@ -29,10 +31,15 @@ class UnwindBuilder extends PlanBuilder {
     plan.query.extracted && plan.query.unwinds.exists(_.unsolved)
 
   def apply(plan: ExecutionPlanInProgress, ctx: PlanContext): ExecutionPlanInProgress = {
-    val unsolvedUnwinds = plan.query.unwinds.filter(_.unsolved)
+    val unsolvedUnwinds = plan.query.unwinds.filter(_.unsolved).map(_.token)
+
+    for ( unwind <- unsolvedUnwinds if unwind.containedAggregate ) {
+      throw new InvalidExpressionException(s"Cannot unwind aggregate expression for ${unwind.name}")
+    }
+
     val result = plan.copy(
       query = plan.query.copy(unwinds = plan.query.unwinds.map(_.solve)),
-      pipe = new UnwindPipe(plan.pipe, unsolvedUnwinds.map(_.token))
+      pipe = new UnwindPipe(plan.pipe, unsolvedUnwinds)
     )
     result
   }

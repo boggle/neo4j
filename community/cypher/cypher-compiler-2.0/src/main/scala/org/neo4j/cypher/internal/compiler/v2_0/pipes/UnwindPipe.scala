@@ -19,13 +19,14 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_0.pipes
 
-import org.neo4j.cypher.internal.compiler.v2_0.commands.{OptionalUnwind, Unwind}
+import org.neo4j.cypher.internal.compiler.v2_0.commands.Unwind
 import org.neo4j.cypher.internal.compiler.v2_0.{PlanDescription, ExecutionContext}
 import org.neo4j.cypher.internal.compiler.v2_0.symbols.{CollectionType, AnyType, SymbolTable}
 import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Identifier
 import org.neo4j.cypher.CypherTypeException
 import org.neo4j.cypher.internal.compiler.v2_0.data.SimpleVal
 import org.neo4j.cypher.internal.helpers.IsCollection
+import org.neo4j.cypher.internal.compiler.v2_0.ast.OptionalUnwindMode
 
 class UnwindPipe(source: Pipe, unwinds: Seq[Unwind]) extends PipeWithSource(source) {
 
@@ -52,9 +53,9 @@ class UnwindPipe(source: Pipe, unwinds: Seq[Unwind]) extends PipeWithSource(sour
       iterator.flatMap { (ctx: ExecutionContext) =>
         val name = item.name
         ctx(name) match {
-          case IsCollection(coll) => item match {
-            case _: OptionalUnwind if coll.isEmpty => Some(ctx += name -> null)
-            case _                                 => coll.map { (elem: Any) => ctx.newWith(name -> elem) }
+          case IsCollection(coll) => item.mode match {
+            case OptionalUnwindMode if coll.isEmpty => Some(ctx += name -> null)
+            case _                                  => coll.map { (elem: Any) => ctx.newWith(name -> elem) }
           }
           case value =>
             throw new CypherTypeException(s"Expected collection for unwinding as $name, but got: $value")

@@ -20,7 +20,7 @@
 package org.neo4j.cypher.internal
 
 import org.scalatest.Matchers
-import org.neo4j.cypher.ExecutionEngineHelper
+import org.neo4j.cypher.{InvalidExpressionException, ExecutionEngineHelper}
 import org.junit.Test
 
 class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
@@ -145,16 +145,27 @@ class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
     result should be(List(Map("x" -> 1, "z" -> 12)))
   }
 
-//  @Test def should_reject_unwinding_of_aggregate_expressions() {
-//    // given
-//    val n = createNode()
-//    relate(n, createNode())
-//    relate(n, createNode())
-//
-//    // when
-//    val result = execute("MATCH (n)-[r]->(m) RETURN n, UNWIND collect(m) AS x").toList
-//
-//    // then
-//    result should be(List(Map("x" -> 1, "z" -> 12)))
-//  }
+  @Test def should_reject_unwinding_of_aggregate_expressions() {
+    // given
+    val n = createNode()
+    relate(n, createNode())
+    relate(n, createNode())
+
+    // when
+    evaluating {
+      execute("MATCH (n)-[r]->(m) RETURN n, UNWIND collect(m) AS x").toList
+    } should produce[InvalidExpressionException]
+  }
+
+  @Test def should_reject_unwinding_of_aggregate_expressions_2() {
+    // given
+    val n = createNode()
+    relate(n, createNode())
+    relate(n, createNode())
+
+    // when
+    evaluating {
+      execute("MATCH (n)-[r]->(m) RETURN n, UNWIND [count(m)] AS x").toList
+    } should produce[InvalidExpressionException]
+  }
 }

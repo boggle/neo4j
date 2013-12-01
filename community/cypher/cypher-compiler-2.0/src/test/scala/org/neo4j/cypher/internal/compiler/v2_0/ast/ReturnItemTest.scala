@@ -34,7 +34,7 @@ class ReturnItemTest extends JUnitSuite with Matchers {
 
   @Test def should_accept_collection_expressions_in_regular_unwind() {
     // given
-    val item = UnaliasedReturnItem(Some(RegularUnwind(token)), identifier, token)
+    val item = UnaliasedReturnItem(Some(Unwind.regular(token)), identifier, token)
     val state = SemanticState.clean.declareIdentifier(identifier, CollectionType(NumberType())).right.get
 
     // when
@@ -46,7 +46,7 @@ class ReturnItemTest extends JUnitSuite with Matchers {
 
   @Test def should_reject_number_expressions_in_regular_unwind() {
     // given
-    val item = UnaliasedReturnItem(Some(RegularUnwind(token)), identifier, token)
+    val item = UnaliasedReturnItem(Some(Unwind.regular(token)), identifier, token)
     val state = SemanticState.clean.declareIdentifier(identifier, NumberType()).right.get
 
     // when
@@ -59,7 +59,7 @@ class ReturnItemTest extends JUnitSuite with Matchers {
 
   @Test def should_accept_collection_expressions_in_optional_unwind() {
     // given
-    val item = UnaliasedReturnItem(Some(OptionalUnwind(token)), identifier, token)
+    val item = UnaliasedReturnItem(Some(Unwind.optional(token)), identifier, token)
     val state = SemanticState.clean.declareIdentifier(identifier, CollectionType(NumberType())).right.get
 
     // when
@@ -71,7 +71,7 @@ class ReturnItemTest extends JUnitSuite with Matchers {
 
   @Test def should_reject_number_expressions_in_optional_unwind() {
     // given
-    val item = UnaliasedReturnItem(Some(OptionalUnwind(token)), identifier, token)
+    val item = UnaliasedReturnItem(Some(Unwind.optional(token)), identifier, token)
     val state = SemanticState.clean.declareIdentifier(identifier, NumberType()).right.get
 
     // when

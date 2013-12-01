@@ -19,10 +19,12 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_0.commands
 
-import expressions.{Identifier, Expression}
+import expressions.Identifier
 import expressions.Identifier._
 import org.neo4j.cypher.internal.compiler.v2_0.symbols._
 import collection.Map
+import org.neo4j.cypher.internal.compiler.v2_0.ast.UnwindMode
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Expression
 
 abstract class ReturnColumn {
   def expressions(symbols: SymbolTable): Map[String,Expression]
@@ -38,22 +40,20 @@ case class AllIdentifiers() extends ReturnColumn {
   def name = "*"
 }
 
-sealed abstract class Unwind {
-  def name: String
-}
+final case class Unwind(mode: UnwindMode, item: ReturnItem, containedAggregate: Boolean) {
+  def name: String = item.name
 
-case class RegularUnwind(name: String) extends Unwind {
-  override def toString = s"UNWIND($name)"
-}
-
-case class OptionalUnwind(name: String) extends Unwind {
-  override def toString = s"OPTIONAL UNWIND($name)"
+  def rewrite(f: Expression => Expression) = Unwind(mode, item.rewrite(f), containedAggregate)
+  
+  override def toString = s"$mode($name)"
 }
 
 case class ReturnItem(expression: Expression, name: String, renamed: Boolean = false)
   extends ReturnColumn {
   def expressions(symbols: SymbolTable) = Map(name -> expression)
 
+  def rewrite(f: Expression => Expression) = copy(expression = f(expression))
+  
   override def toString = {
     if (renamed) s"${expression.toString} AS $name" else name
   }

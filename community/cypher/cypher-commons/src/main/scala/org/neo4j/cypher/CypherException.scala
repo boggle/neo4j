@@ -75,3 +75,5 @@ class MergeConstraintConflictException(message: String) extends CypherException(
 class ArithmeticException(message: String) extends CypherException(message)
 
 class IllegalValueException(message: String) extends CypherException(message)
+
+class InvalidExpressionException(message: String) extends CypherTypeException(message)
