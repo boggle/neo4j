@@ -27,6 +27,8 @@ case class SymbolTable(identifiers: Map[String, CypherType] = Map.empty) {
   def size: Int = identifiers.size
   def isEmpty: Boolean = identifiers.isEmpty
 
+  def replace(key: String, typ: CypherType): SymbolTable =  SymbolTable(identifiers + (key -> typ))
+
   def add(key: String, typ: CypherType): SymbolTable = identifiers.get(key) match {
     case Some(existingType) if typ.isAssignableFrom(existingType) =>
       SymbolTable(identifiers + (key -> typ.mergeDown(existingType)))

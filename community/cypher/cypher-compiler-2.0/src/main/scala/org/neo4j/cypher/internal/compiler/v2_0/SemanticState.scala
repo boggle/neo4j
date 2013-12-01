@@ -75,6 +75,20 @@ case class SemanticState(
         }
     }
 
+  def unwindType(expression: ast.Expression, token: InputToken): Either[SemanticError, SemanticState] = {
+    val currentTypes: TypeSet = expressionTypes(expression)
+    val iteratedTypes = currentTypes.map {
+      case typ: CollectionType => Right(typ.iteratedType)
+      case typ                 => Left(typ)
+    }
+    val leftTypes = iteratedTypes.filter(_.isLeft)
+    if (! leftTypes.isEmpty) {
+      Left(SemanticError(s"UNWIND encountered non-collection types: ${leftTypes.map(_.left.get)}", token))
+    } else {
+      val rightTypes = iteratedTypes.map(_.right.get)
+      updateType(expression, TypeSet(AnyType())).constrainType(expression, token, TypeSet(rightTypes))
+    }
+  }
   def declareIdentifier(identifier: ast.Identifier, possibleType: CypherType, possibleTypes: CypherType*): Either[SemanticError, SemanticState] =
     declareIdentifier(identifier, (possibleType +: possibleTypes).toSet)
 

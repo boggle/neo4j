@@ -60,8 +60,9 @@ class TopPipeBuilder extends PlanBuilder with SortingPreparations {
     val extracted = q.extracted
     val unsolvedOrdering = q.sort.filter(_.unsolved).nonEmpty
     val limited = q.slice.exists(_.token.limit.nonEmpty)
+    val unwound = q.unwinds.forall(_.solved)
 
-    extracted && unsolvedOrdering && limited
+    extracted && unwound && unsolvedOrdering && limited
   }
 }
 

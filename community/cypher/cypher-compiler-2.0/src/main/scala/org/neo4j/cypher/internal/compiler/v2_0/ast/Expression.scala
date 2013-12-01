@@ -78,6 +78,8 @@ abstract class Expression extends AstNode with SemanticChecking {
     s => s.constrainType(this, token, typeGen(s))
   final def constrainType(possibleTypes: => TypeSet): SemanticState => Either[SemanticError, SemanticState] =
     _.constrainType(this, token, possibleTypes)
+  final def unwindType(): SemanticState => Either[SemanticError, SemanticState] =
+    _.unwindType(this, token)
 
   def toCommand: CommandExpression
   def toPredicate: CommandPredicate = CoercedPredicate(toCommand)

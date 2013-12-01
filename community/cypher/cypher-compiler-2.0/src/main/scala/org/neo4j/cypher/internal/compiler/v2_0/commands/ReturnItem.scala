@@ -23,9 +23,6 @@ import expressions.{Identifier, Expression}
 import expressions.Identifier._
 import org.neo4j.cypher.internal.compiler.v2_0.symbols._
 import collection.Map
-import org.neo4j.cypher.internal.compiler.v2_0.ExecutionContext
-import org.neo4j.cypher.internal.helpers.IsCollection
-import org.neo4j.cypher.CypherTypeException
 
 abstract class ReturnColumn {
   def expressions(symbols: SymbolTable): Map[String,Expression]
@@ -39,23 +36,6 @@ case class AllIdentifiers() extends ReturnColumn {
     map(n => n -> Identifier(n)).toMap
 
   def name = "*"
-}
-
-object Unwind {
-  def apply(iterator: Iterator[ExecutionContext], items: Seq[Unwind]) =
-    items.foldLeft(iterator) { (iterator: Iterator[ExecutionContext], item: Unwind) =>
-      iterator.flatMap { (ctx: ExecutionContext) =>
-        val name = item.name
-        ctx(name) match {
-          case IsCollection(coll) => item match {
-            case OptionalUnwind(name) if coll.isEmpty => Some(ctx += name -> null)
-            case _                                    => coll.map { (elem: Any) => ctx.newWith(name -> elem) }
-          }
-          case value =>
-            throw new CypherTypeException(s"Expected collection for unwinding as $name, but got: $value")
-        }
-    }
-  }
 }
 
 sealed abstract class Unwind {

@@ -121,7 +121,6 @@ case class PartiallySolvedQuery(returns: Seq[QueryToken[ReturnColumn]],
     patterns.exists(_.unsolved) ||
     where.exists(_.unsolved) ||
     namedPaths.exists(_.unsolved) ||
-    unwinds.exists(_.unsolved) ||
     updates.exists(_.unsolved))
 
   def rewrite(f: Expression => Expression): PartiallySolvedQuery = {

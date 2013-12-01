@@ -19,20 +19,21 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_0.executionplan.builders
 
-import org.neo4j.cypher.internal.compiler.v2_0.pipes.SlicePipe
-import org.neo4j.cypher.internal.compiler.v2_0.executionplan.{PlanBuilder, ExecutionPlanInProgress}
+import org.neo4j.cypher.internal.compiler.v2_0.executionplan.{ExecutionPlanInProgress, PlanBuilder}
 import org.neo4j.cypher.internal.compiler.v2_0.spi.PlanContext
+import org.neo4j.cypher.internal.compiler.v2_0.pipes.UnwindPipe
 
-class SliceBuilder extends PlanBuilder {
-  def apply(plan: ExecutionPlanInProgress, ctx: PlanContext) = {
-    val slice = plan.query.slice.map(_.token).head
-    val pipe = new SlicePipe(plan.pipe, slice.from, slice.limit)
+class UnwindBuilder extends PlanBuilder {
 
-    plan.copy(pipe = pipe, query = plan.query.copy(slice = plan.query.slice.map(_.solve)))
-  }
+  def canWorkWith(plan: ExecutionPlanInProgress, ctx: PlanContext): Boolean =
+    plan.query.extracted && plan.query.unwinds.exists(_.unsolved)
 
-  def canWorkWith(plan: ExecutionPlanInProgress, ctx: PlanContext) = {
-    val q = plan.query
-    q.extracted && !q.unwinds.exists(_.unsolved) && !q.sort.exists(_.unsolved) && q.slice.exists(_.unsolved)
+  def apply(plan: ExecutionPlanInProgress, ctx: PlanContext): ExecutionPlanInProgress = {
+    val unsolvedUnwinds = plan.query.unwinds.filter(_.unsolved)
+    val result = plan.copy(
+      query = plan.query.copy(unwinds = plan.query.unwinds.map(_.solve)),
+      pipe = new UnwindPipe(plan.pipe, unsolvedUnwinds.map(_.token))
+    )
+    result
   }
 }

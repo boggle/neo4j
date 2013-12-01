@@ -224,6 +224,7 @@ The Neo4j Team""")
     def myBuilders: Seq[PlanBuilder] = Seq(
       new TopPipeBuilder,
       new ExtractBuilder,
+      new UnwindBuilder,
       new SliceBuilder,
       new DistinctBuilder,
       new AggregationBuilder, 

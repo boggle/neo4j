@@ -40,6 +40,7 @@ class SortBuilder extends PlanBuilder with SortingPreparations {
 
   def canWorkWith(plan: ExecutionPlanInProgress, ctx: PlanContext) =
     plan.query.extracted &&
+    plan.query.unwinds.forall(_.solved) &&
     plan.query.sort.filter(x => x.unsolved && !x.token.expression.containsAggregate).nonEmpty
 
   override def missingDependencies(plan: ExecutionPlanInProgress) = if (!plan.query.extracted) {
