@@ -144,4 +144,17 @@ class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
     // then
     result should be(List(Map("x" -> 1, "z" -> 12)))
   }
+
+//  @Test def should_reject_unwinding_of_aggregate_expressions() {
+//    // given
+//    val n = createNode()
+//    relate(n, createNode())
+//    relate(n, createNode())
+//
+//    // when
+//    val result = execute("MATCH (n)-[r]->(m) RETURN n, UNWIND collect(m) AS x").toList
+//
+//    // then
+//    result should be(List(Map("x" -> 1, "z" -> 12)))
+//  }
 }
