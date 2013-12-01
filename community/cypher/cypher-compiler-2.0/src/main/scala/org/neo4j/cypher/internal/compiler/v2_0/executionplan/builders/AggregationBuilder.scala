@@ -64,7 +64,7 @@ class AggregationBuilder extends PlanBuilder  {
 
     // Mark return items as done if they are extracted
     val returnItems = planToAggregate.query.returns.map {
-      case r@Unsolved(ReturnItem(exp, name, renamed, optUnwind))
+      case r@Unsolved(ReturnItem(exp, name, renamed))
         if keyExpressionsToExtract.keys.values.exists(keyExp => keyExp == exp) => r.solve
       case r                                                                   => r
     }

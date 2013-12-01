@@ -56,16 +56,18 @@ sealed trait ClosingClause extends Clause {
 
   def closeLegacyQueryBuilder(builder: commands.QueryBuilder) : commands.Query = {
     val returns = returnItems.toCommands
+    val unwinds = returnItems.toUnwindCommands
     extractAggregationExpressions(returns).foreach { builder.aggregation(_:_*) }
     skip.foreach { s => builder.skip(s.toCommand) }
     limit.foreach { l => builder.limit(l.toCommand) }
     orderBy.foreach { o => builder.orderBy(o.sortItems.map(_.toCommand):_*) }
+    builder.unwinds(unwinds:_*)
     builder.returns(returns:_*)
   }
 
   protected def extractAggregationExpressions(items: Seq[commands.ReturnColumn]) = {
     val aggregationExpressions = items.collect {
-      case commands.ReturnItem(expression, _, _, _) => (expression.subExpressions :+ expression).collect {
+      case commands.ReturnItem(expression, _, _) => (expression.subExpressions :+ expression).collect {
         case agg: commandexpressions.AggregationExpression => agg
       }
     }.flatten

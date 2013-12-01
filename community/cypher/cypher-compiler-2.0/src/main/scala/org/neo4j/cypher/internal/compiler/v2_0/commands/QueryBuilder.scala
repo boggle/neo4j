@@ -24,17 +24,18 @@ import org.neo4j.cypher.internal.compiler.v2_0.mutation.UpdateAction
 
 class QueryBuilder(var startItems: Seq[StartItem] = Seq()) {
   var updates = Seq[UpdateAction]()
-  var matching: Seq[Pattern] = Seq()
+  var matching: Seq[Pattern] = Seq.empty
   var where: Predicate = True()
   var optional: Boolean = false
   var aggregation: Option[Seq[AggregationExpression]] = None
-  var orderBy: Seq[SortItem] = Seq()
+  var orderBy: Seq[SortItem] = Seq.empty
   var skip: Option[Expression] = None
   var limit: Option[Expression] = None
-  var namedPaths: Seq[NamedPath] = Seq()
-  var using: Seq[StartItem with Hint] = Seq()
+  var namedPaths: Seq[NamedPath] = Seq.empty
+  var using: Seq[StartItem with Hint] = Seq.empty
   var tail: Option[Query] = None
   var columns: Seq[ReturnColumn] => List[String] = (returnItems) => returnItems.map(_.name).toList
+  var unwinds: Seq[Unwind] = Seq.empty
 
   def startItems(items: StartItem*): QueryBuilder = store {
     startItems = items
@@ -104,6 +105,9 @@ class QueryBuilder(var startItems: Seq[StartItem] = Seq()) {
     columns = (x) => columnList.toList
   }
 
+  def unwinds(newUnwinds: Unwind*): QueryBuilder = store {
+    unwinds = newUnwinds
+  }
   def tail(q: Query): QueryBuilder = store {
     tail = Some(q)
   }
@@ -129,16 +133,16 @@ class QueryBuilder(var startItems: Seq[StartItem] = Seq()) {
 
     TODO: Kill the commands.Query class
      */
-    val allIdentifierss = Seq[ReturnColumn](AllIdentifiers())
+    val allIdentifiers = Seq[ReturnColumn](AllIdentifiers())
 
-    val secondPart = Query(Return(columns(returnItems), returnItems: _*), Seq.empty, updates, matching, optional,
+    val secondPart = Query(Return(columns(returnItems), returnItems: _*), unwinds, Seq.empty, updates, matching, optional,
       using, where, aggregation, orderBy, slice, namedPaths, tail)
 
     Query.empty.copy(
-      returns = Return(columns(allIdentifierss), allIdentifierss:_*),
+      returns = Return(columns(allIdentifiers), allIdentifiers:_*),
       start = startItems,
       tail = Some(secondPart))
   } else
-    Query(Return(columns(returnItems), returnItems: _*), startItems, updates, matching, optional,
+    Query(Return(columns(returnItems), returnItems: _*), unwinds, startItems, updates, matching, optional,
       using, where, aggregation, orderBy, slice, namedPaths, tail)
 }

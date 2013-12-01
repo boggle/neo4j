@@ -36,7 +36,7 @@ import org.neo4j.cypher.internal.compiler.v2_0.commands.Slice
 object PartiallySolvedQuery {
 
   // Creates a fully unsolved query
-  def apply(in:Query): PartiallySolvedQuery = {
+  def apply(in: Query): PartiallySolvedQuery = {
 
     val q = in.compact
 
@@ -55,6 +55,7 @@ object PartiallySolvedQuery {
       sort = q.sort.map(Unsolved(_)),
       slice = q.slice.map(Unsolved(_)),
       namedPaths = q.namedPaths.map(Unsolved(_)),
+      unwinds = q.unwinds.map(Unsolved(_)),
       aggregateToDo = q.aggregation.isDefined,
       extracted = false,
       optional = q.optional,
@@ -72,6 +73,7 @@ object PartiallySolvedQuery {
     sort = Seq(),
     slice = None,
     namedPaths = Seq(),
+    unwinds = Seq(),
     aggregateToDo = false,
     extracted = false,
     optional = false,
@@ -88,6 +90,7 @@ object PartiallySolvedQuery {
  * @param extracted shows whether the query has created a projection or not
  */
 case class PartiallySolvedQuery(returns: Seq[QueryToken[ReturnColumn]],
+                                unwinds: Seq[QueryToken[Unwind]],
                                 start: Seq[QueryToken[StartItem]],
                                 updates: Seq[QueryToken[UpdateAction]],
                                 patterns: Seq[QueryToken[Pattern]],
@@ -111,18 +114,20 @@ case class PartiallySolvedQuery(returns: Seq[QueryToken[ReturnColumn]],
     aggregation.forall(_.solved) &&
     sort.forall(_.solved) &&
     slice.forall(_.solved) &&
-    namedPaths.forall(_.solved)
+    namedPaths.forall(_.solved) &&
+    unwinds.forall(_.solved)
 
   def readyToAggregate = !(start.exists(_.unsolved) ||
     patterns.exists(_.unsolved) ||
     where.exists(_.unsolved) ||
     namedPaths.exists(_.unsolved) ||
+    unwinds.exists(_.unsolved) ||
     updates.exists(_.unsolved))
 
   def rewrite(f: Expression => Expression): PartiallySolvedQuery = {
     this.copy(
       returns = returns.map {
-        case Unsolved(ReturnItem(expression, name, renamed, optUnwind)) => Unsolved[ReturnColumn](ReturnItem(expression.rewrite(f), name, renamed, optUnwind))
+        case Unsolved(ReturnItem(expression, name, renamed)) => Unsolved[ReturnColumn](ReturnItem(expression.rewrite(f), name, renamed))
         case x => x
       },
       where = where.map {
@@ -157,7 +162,7 @@ case class PartiallySolvedQuery(returns: Seq[QueryToken[ReturnColumn]],
 
   def unsolvedExpressions = {
     val rExpressions = returns.flatMap {
-      case Unsolved(ReturnItem(expression, _, _, _)) => expression.filter( e=>true )
+      case Unsolved(ReturnItem(expression, _, _)) => expression.filter( e=>true )
       case _ => None
     }
 

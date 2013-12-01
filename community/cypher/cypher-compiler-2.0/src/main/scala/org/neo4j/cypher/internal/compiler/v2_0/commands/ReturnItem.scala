@@ -23,6 +23,9 @@ import expressions.{Identifier, Expression}
 import expressions.Identifier._
 import org.neo4j.cypher.internal.compiler.v2_0.symbols._
 import collection.Map
+import org.neo4j.cypher.internal.compiler.v2_0.ExecutionContext
+import org.neo4j.cypher.internal.helpers.IsCollection
+import org.neo4j.cypher.CypherTypeException
 
 abstract class ReturnColumn {
   def expressions(symbols: SymbolTable): Map[String,Expression]
@@ -38,26 +41,41 @@ case class AllIdentifiers() extends ReturnColumn {
   def name = "*"
 }
 
-sealed abstract class Unwind
-
-case object RegularUnwind extends Unwind {
-  override def toString = "UNWIND"
+object Unwind {
+  def apply(iterator: Iterator[ExecutionContext], items: Seq[Unwind]) =
+    items.foldLeft(iterator) { (iterator: Iterator[ExecutionContext], item: Unwind) =>
+      iterator.flatMap { (ctx: ExecutionContext) =>
+        val name = item.name
+        ctx(name) match {
+          case IsCollection(coll) => item match {
+            case OptionalUnwind(name) if coll.isEmpty => Some(ctx += name -> null)
+            case _                                    => coll.map { (elem: Any) => ctx.newWith(name -> elem) }
+          }
+          case value =>
+            throw new CypherTypeException(s"Expected collection for unwinding as $name, but got: $value")
+        }
+    }
+  }
 }
 
-case object OptionalUnwind extends Unwind {
-  override def toString ="OPTIONAL UNWIND"
+sealed abstract class Unwind {
+  def name: String
 }
 
-case class ReturnItem(expression: Expression, name: String, renamed: Boolean = false, optUnwind: Option[Unwind] = None)
+case class RegularUnwind(name: String) extends Unwind {
+  override def toString = s"UNWIND($name)"
+}
+
+case class OptionalUnwind(name: String) extends Unwind {
+  override def toString = s"OPTIONAL UNWIND($name)"
+}
+
+case class ReturnItem(expression: Expression, name: String, renamed: Boolean = false)
   extends ReturnColumn {
   def expressions(symbols: SymbolTable) = Map(name -> expression)
 
   override def toString = {
-    val namePart = if (renamed) s"${expression.toString} AS $name" else name
-    optUnwind match {
-      case Some(unwind) => s"$unwind $namePart"
-      case None         => namePart
-    } 
+    if (renamed) s"${expression.toString} AS $name" else name
   }
 
   def rename(newName: String) = copy(name = newName, renamed = true)

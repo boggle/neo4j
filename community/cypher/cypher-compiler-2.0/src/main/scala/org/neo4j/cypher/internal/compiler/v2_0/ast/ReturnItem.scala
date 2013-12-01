@@ -20,10 +20,12 @@
 package org.neo4j.cypher.internal.compiler.v2_0.ast
 
 import org.neo4j.cypher.internal.compiler.v2_0._
-import org.neo4j.cypher.internal.compiler.v2_0.commands
+import scala.Some
 
 sealed trait ReturnItems extends AstNode with SemanticCheckable {
   def toCommands : Seq[commands.ReturnColumn]
+  def toUnwindCommands: Seq[commands.Unwind]
+
   def declareIdentifiers(currentState: SemanticState) : SemanticCheck
 }
 
@@ -38,6 +40,7 @@ case class ListedReturnItems(items: Seq[ReturnItem], token: InputToken) extends 
   }
 
   def toCommands = items.map(_.toCommand)
+  def toUnwindCommands = items.flatMap(_.toUnwindCommand)
 }
 
 case class ReturnAll(token: InputToken) extends ReturnItems {
@@ -46,6 +49,7 @@ case class ReturnAll(token: InputToken) extends ReturnItems {
   def declareIdentifiers(currentState: SemanticState) = s => SemanticCheckResult.success(s.importSymbols(currentState.symbolTable))
 
   def toCommands = Seq(commands.AllIdentifiers())
+  def toUnwindCommands: Seq[commands.Unwind] = Seq.empty
 }
 
 
@@ -64,6 +68,7 @@ sealed trait ReturnItem extends AstNode with SemanticCheckable {
   private def semanticCheckExpression = expression.semanticCheck(Expression.SemanticContext.Results)
 
   def toCommand: commands.ReturnItem
+  def toUnwindCommand: Option[commands.Unwind]
 }
 
 case class UnaliasedReturnItem(optUnwind: Option[ast.Unwind], expression: Expression, token: InputToken) extends ReturnItem {
@@ -73,12 +78,14 @@ case class UnaliasedReturnItem(optUnwind: Option[ast.Unwind], expression: Expres
   }
   val name = alias.map(_.name) getOrElse { token.toString.trim }
 
-  def toCommand = commands.ReturnItem(expression.toCommand, name, optUnwind = optUnwind.map(_.toCommand))
+  def toCommand = commands.ReturnItem(expression.toCommand, name)
+  def toUnwindCommand = optUnwind.map(_.toCommand(name))
 }
 
 case class AliasedReturnItem(optUnwind: Option[ast.Unwind], expression: Expression, identifier: Identifier, token: InputToken) extends ReturnItem {
   val alias = Some(identifier)
   val name = identifier.name
 
-  def toCommand = commands.ReturnItem(expression.toCommand, name, renamed = true, optUnwind = optUnwind.map(_.toCommand))
+  def toCommand = commands.ReturnItem(expression.toCommand, name, renamed = true)
+  def toUnwindCommand = optUnwind.map(_.toCommand(name))
 }

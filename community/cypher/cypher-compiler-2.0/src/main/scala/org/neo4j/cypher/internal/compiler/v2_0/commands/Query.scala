@@ -41,6 +41,7 @@ object Query {
     where = True(),
     slice = None,
     aggregation = None,
+    unwinds = Seq.empty,
     returns = Return(columns = List.empty)
   )
 }
@@ -53,6 +54,7 @@ trait AbstractQuery {
 }
 
 case class Query(returns: Return,
+                 unwinds: Seq[Unwind],
                  start: Seq[StartItem],
                  updatedCommands:Seq[UpdateAction],
                  matching: Seq[Pattern],
@@ -73,6 +75,7 @@ case class Query(returns: Return,
         returns == Return(List("*"), AllIdentifiers()) &&
         where == True() &&
         matching.isEmpty &&
+        unwinds.isEmpty &&
         sort.isEmpty &&
         slice.isEmpty
 
@@ -103,6 +106,7 @@ case class Query(returns: Return,
         where = True(),
         aggregation = None,
         sort = Seq(),
+        unwinds = tailQ.unwinds,
         slice = None,
         namedPaths = namedPaths ++ tailQ.namedPaths,
         tail = tailQ.tail
@@ -117,16 +121,17 @@ case class Query(returns: Return,
 
   override def toString: String =  "\n" +
     includeIfNotEmpty("start  : ", start) +
-      includeIfNotEmpty("updates: ", updatedCommands) +
-      includeIfNotEmpty((if(optional) "optional " else "") + "match  : ", matching) +
-      includeIfNotEmpty("paths  : ", namedPaths) +
-      includeIfNotEmpty("hints  : ", hints) +
-      (if (where == True()) "" else where.toString) +
-      includeIfNotEmpty("aggreg : ", aggregation) +
-      includeIfNotEmpty("return : ", returns.returnItems) +
-      includeIfNotEmpty("order  : ", sort) +
-      includeIfNotEmpty("slice  : ", slice) +
-      includeIfNotEmpty("next   : ", tail) + "\n"
+    includeIfNotEmpty("updates: ", updatedCommands) +
+    includeIfNotEmpty((if(optional) "optional " else "") + "match  : ", matching) +
+    includeIfNotEmpty("paths  : ", namedPaths) +
+    includeIfNotEmpty("hints  : ", hints) +
+    (if (where == True()) "" else where.toString) +
+    includeIfNotEmpty("aggreg : ", aggregation) +
+    includeIfNotEmpty("return : ", returns.returnItems) +
+    includeIfNotEmpty("unwind : ", unwinds) +
+    includeIfNotEmpty("order  : ", sort) +
+    includeIfNotEmpty("slice  : ", slice) +
+    includeIfNotEmpty("next   : ", tail) + "\n"
 
 
   def setQueryText(t: String): Query = copy(queryString = QueryString(t))

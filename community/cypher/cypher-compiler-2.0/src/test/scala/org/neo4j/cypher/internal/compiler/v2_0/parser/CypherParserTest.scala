@@ -20,12 +20,12 @@
 package org.neo4j.cypher.internal.compiler.v2_0.parser
 
 import org.neo4j.cypher.internal.compiler.v2_0._
-import commands._
-import commands.expressions._
-import commands.values.{UnresolvedLabel, TokenType, KeyToken}
-import commands.values.TokenType.PropertyKey
-import helpers.LabelSupport
-import mutation._
+import org.neo4j.cypher.internal.compiler.v2_0.commands._
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions._
+import org.neo4j.cypher.internal.compiler.v2_0.commands.values.{UnresolvedLabel, TokenType, KeyToken}
+import org.neo4j.cypher.internal.compiler.v2_0.commands.values.TokenType.PropertyKey
+import org.neo4j.cypher.internal.compiler.v2_0.helpers.LabelSupport
+import org.neo4j.cypher.internal.compiler.v2_0.mutation._
 import org.neo4j.cypher.SyntaxException
 import org.neo4j.graphdb.Direction
 import org.hamcrest.CoreMatchers.equalTo
@@ -33,6 +33,97 @@ import org.junit.Assert._
 import org.junit.Test
 import org.scalatest.Assertions
 import org.scalatest.junit.JUnitSuite
+import org.neo4j.cypher.internal.compiler.v2_0.commands.ReturnItem
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Stdev
+import org.neo4j.cypher.internal.compiler.v2_0.commands.RegularExpression
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.AbsFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.ParameterExpression
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.NodesFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.CollectionIndex
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.RelationshipEndPoints
+import org.neo4j.cypher.internal.compiler.v2_0.commands.CreateIndex
+import org.neo4j.cypher.internal.compiler.v2_0.commands.AllNodes
+import org.neo4j.cypher.internal.compiler.v2_0.commands.GreaterThan
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.LiteralMap
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.RoundFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Divide
+import org.neo4j.cypher.internal.compiler.v2_0.commands.LabelAction
+import org.neo4j.cypher.internal.compiler.v2_0.mutation.DeleteEntityAction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.CreateUniqueStartItem
+import org.neo4j.cypher.internal.compiler.v2_0.mutation.DeletePropertyAction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.SqrtFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.GenericCase
+import org.neo4j.cypher.internal.compiler.v2_0.commands.SortItem
+import org.neo4j.cypher.internal.compiler.v2_0.commands.GreaterThanOrEqual
+import scala.Some
+import org.neo4j.cypher.internal.compiler.v2_0.commands.NodeByIndex
+import org.neo4j.cypher.internal.compiler.v2_0.mutation.CreateNode
+import org.neo4j.cypher.internal.compiler.v2_0.commands.SingleInCollection
+import org.neo4j.cypher.internal.compiler.v2_0.commands.NonEmpty
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.ExtractFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.Xor
+import org.neo4j.cypher.internal.compiler.v2_0.commands.LessThanOrEqual
+import org.neo4j.cypher.internal.compiler.v2_0.mutation.CreateRelationship
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.StdevP
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Pow
+import org.neo4j.cypher.internal.compiler.v2_0.mutation.MapPropertySetAction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.LiteralRegularExpression
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.FilterFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.Equals
+import org.neo4j.cypher.internal.compiler.v2_0.commands.AllInCollection
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Sum
+import org.neo4j.cypher.internal.compiler.v2_0.commands.AllRelationships
+import org.neo4j.cypher.internal.compiler.v2_0.commands.NodeByLabel
+import org.neo4j.cypher.internal.compiler.v2_0.commands.IsNull
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Count
+import org.neo4j.cypher.internal.compiler.v2_0.commands.ShortestPath
+import org.neo4j.cypher.internal.compiler.v2_0.commands.NodeByIndexQuery
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.RelationshipTypeFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Property
+import org.neo4j.cypher.internal.compiler.v2_0.commands.True
+import org.neo4j.cypher.internal.compiler.v2_0.commands.PathExpression
+import org.neo4j.cypher.internal.compiler.v2_0.commands.Or
+import org.neo4j.cypher.internal.compiler.v2_0.commands.NamedPath
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.IdFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.CreateRelationshipStartItem
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Max
+import org.neo4j.cypher.internal.compiler.v2_0.commands.NoneInCollection
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.PercentileCont
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.ReduceFunction
+import org.neo4j.cypher.internal.compiler.v2_0.mutation.PropertySetAction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.CollectionSliceExpression
+import org.neo4j.cypher.internal.compiler.v2_0.mutation.CreateUniqueAction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.PercentileDisc
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Multiply
+import org.neo4j.cypher.internal.compiler.v2_0.commands.Not
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.ShortestPathExpression
+import org.neo4j.cypher.internal.compiler.v2_0.commands.SchemaIndex
+import org.neo4j.cypher.internal.compiler.v2_0.commands.AnyInCollection
+import org.neo4j.cypher.internal.compiler.v2_0.commands.CreateNodeStartItem
+import org.neo4j.cypher.internal.compiler.v2_0.commands.CreateUniqueConstraint
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Literal
+import org.neo4j.cypher.internal.compiler.v2_0.commands.AllIdentifiers
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.SignFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.CoalesceFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.Union
+import org.neo4j.cypher.internal.compiler.v2_0.commands.HasLabel
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Min
+import org.neo4j.cypher.internal.compiler.v2_0.commands.RelationshipByIndex
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.LengthFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.DropIndex
+import org.neo4j.cypher.internal.compiler.v2_0.mutation.ForeachAction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Modulo
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Add
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.SimpleCase
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Subtract
+import org.neo4j.cypher.internal.compiler.v2_0.ParsedVarLengthRelation
+import org.neo4j.cypher.internal.compiler.v2_0.commands.SingleNode
+import org.neo4j.cypher.internal.compiler.v2_0.commands.RegularUnwind
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Distinct
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.CountStar
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.RelationshipFunction
+import org.neo4j.cypher.internal.compiler.v2_0.commands.LessThan
+import org.neo4j.cypher.internal.compiler.v2_0.commands.expressions.Avg
 
 class CypherParserTest extends JUnitSuite with Assertions {
   @Test def shouldParseEasiestPossibleQuery() {
@@ -1676,8 +1767,8 @@ class CypherParserTest extends JUnitSuite with Assertions {
       "start a=node(0), b=node(1) with a,b create a-[r:REL {why : 42, foo : 'bar'}]->b", {
       val secondQ = Query.
         start(CreateRelationshipStartItem(CreateRelationship("r",
-        RelationshipEndpoint(Identifier("a"),Map(),Seq.empty, true),
-        RelationshipEndpoint(Identifier("b"),Map(),Seq.empty, true), "REL", Map("why" -> Literal(42), "foo" -> Literal("bar"))))).
+        RelationshipEndpoint(Identifier("a"),Map(), Seq.empty, true),
+        RelationshipEndpoint(Identifier("b"),Map(), Seq.empty, true), "REL", Map("why" -> Literal(42), "foo" -> Literal("bar"))))).
         returns()
 
       Query.
@@ -2879,6 +2970,37 @@ class CypherParserTest extends JUnitSuite with Assertions {
         matches(RelatedTo("a", "b", "r", "KNOWS", Direction.OUTGOING)).
         tail(Query.updates(MapPropertySetAction(Identifier("r"), LiteralMap(Map("id"->Literal(42))))).returns()).
         returns(AllIdentifiers()))
+  }
+
+  @Test def should_collect_unwinds() {
+    test(
+      "MATCH (n) RETURN UNWIND [1, 2, 3] AS x",
+      Query.
+        matches(SingleNode("n")).
+        unwinds(RegularUnwind("x")).
+        returns(ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)))
+  }
+
+  @Test def should_collect_unwinds_from_with() {
+    test(
+      "MATCH (n) WITH n, UNWIND [1, 2, 3] AS x SET n =  { id: x }",
+      Query.
+        matches(SingleNode("n")).
+        unwinds(RegularUnwind("x")).
+        tail(Query.updates(MapPropertySetAction(Identifier("n"), LiteralMap(Map("id" -> Identifier("x"))))).returns())
+        returns(
+          ReturnItem(Identifier("n"), "n", renamed = false),
+          ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)
+        ))
+  }
+
+  @Test def should_collect_optional_unwinds() {
+    test(
+      "MATCH (n) RETURN OPTIONAL UNWIND [1, 2, 3] AS x",
+      Query.
+        matches(SingleNode("n")).
+        unwinds(OptionalUnwind("x")).
+        returns(ReturnItem(Collection(Literal(1), Literal(2), Literal(3)), "x", renamed = true)))
   }
 
   val parser = CypherParser()

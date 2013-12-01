@@ -58,8 +58,8 @@ case class AggregationPreparationRewriter(cacheNamer: Option[Expression => Strin
     plan.query.returns.exists(rc => returnColumnToRewrite(rc.token))
 
   private def returnColumnToRewrite: ReturnColumn => Boolean = {
-    case ReturnItem(e, _, _, _) => !e.isInstanceOf[AggregationExpression] && e.containsAggregate
-    case _                      => false
+    case ReturnItem(e, _, _) => !e.isInstanceOf[AggregationExpression] && e.containsAggregate
+    case _                   => false
   }
 
   private def rewrite(origQuery: PartiallySolvedQuery): PartiallySolvedQuery = {
@@ -73,7 +73,7 @@ case class AggregationPreparationRewriter(cacheNamer: Option[Expression => Strin
       val expressionsToRewrite = returnColumnsToRewrite.map(ri => ri.expression)
       val childExpressionsToAddToWith = expressionsToRewrite.flatMap(e => e.arguments)
       val expressionsToKeep = origQuery.returns.collect {
-        case QueryToken(rc@ReturnItem(e, _, _, _)) if !returnColumnToRewrite(rc) => e
+        case QueryToken(rc@ReturnItem(e, _, _)) if !returnColumnToRewrite(rc) => e
       }
 
       val cacheNameLookup = (childExpressionsToAddToWith ++ expressionsToKeep).map(e => e -> namer(e)).toMap
