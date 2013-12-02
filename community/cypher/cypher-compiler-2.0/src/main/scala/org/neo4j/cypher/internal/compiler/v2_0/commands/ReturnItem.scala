@@ -42,7 +42,6 @@ case class AllIdentifiers() extends ReturnColumn {
 
 final case class Unwind(mode: UnwindMode, item: ReturnItem, containedAggregate: Boolean) {
   def name: String = item.name
-
   def rewrite(f: Expression => Expression) = Unwind(mode, item.rewrite(f), containedAggregate)
   
   override def toString = s"$mode($name)"
@@ -50,6 +49,7 @@ final case class Unwind(mode: UnwindMode, item: ReturnItem, containedAggregate: 
 
 case class ReturnItem(expression: Expression, name: String, renamed: Boolean = false)
   extends ReturnColumn {
+
   def expressions(symbols: SymbolTable) = Map(name -> expression)
 
   def rewrite(f: Expression => Expression) = copy(expression = f(expression))

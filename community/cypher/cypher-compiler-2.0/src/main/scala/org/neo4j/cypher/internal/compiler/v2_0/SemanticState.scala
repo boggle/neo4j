@@ -24,6 +24,7 @@ import scala.collection.immutable.HashMap
 import scala.collection.immutable.SortedSet
 import scala.collection.breakOut
 import org.neo4j.cypher.internal.compiler.v2_0.symbols._
+import org.neo4j.cypher.internal.compiler.v2_0.ast.Identifier
 
 case class Symbol(identifiers: Set[ast.Identifier], types: TypeSet) {
   def tokens = identifiers.map(_.token)(breakOut[Set[ast.Identifier], InputToken, SortedSet[InputToken]])
@@ -45,6 +46,11 @@ case class SemanticState(
 
   def symbol(name: String): Option[Symbol] = symbolTable.get(name) orElse parent.flatMap(_.symbol(name))
   def symbolTypes(name: String) = this.symbol(name).map(_.types).getOrElse(TypeSet.empty)
+
+  def symbols: Set[String] = parent match {
+    case Some(parentState) => symbolTable.keySet ++ parentState.symbols
+    case None              => symbolTable.keySet
+  }
 
   def expressionTypes(expression: ast.Expression): TypeSet = typeTable.get(expression).getOrElse(TypeSet.empty)
 
@@ -75,7 +81,7 @@ case class SemanticState(
         }
     }
 
-  def unwindType(expression: ast.Expression, token: InputToken): Either[SemanticError, SemanticState] = {
+  def declareWithIteratedType(identifier: Identifier, expression: ast.Expression): Either[SemanticError, SemanticState] = {
     val currentTypes: TypeSet = expressionTypes(expression)
     val iteratedTypes = currentTypes.map {
       case typ: CollectionType => Right(typ.iteratedType)
@@ -84,13 +90,16 @@ case class SemanticState(
     val leftTypes = iteratedTypes.filter(_.isLeft)
     if (! leftTypes.isEmpty) {
       Left(SemanticError(
-        s"Type mismatch. UNWIND expected collection but found: ${leftTypes.map(_.left.get).mkString(", ")}", token))
+        s"Type mismatch. UNWIND expected collection but found: ${leftTypes.map(_.left.get).mkString(", ")}",
+        expression.token
+      ))
     } else {
       val rightTypes = iteratedTypes.map(_.right.get)
       val updatedState: SemanticState = updateType(expression, TypeSet(AnyType()))
-      updatedState.constrainType(expression, token, TypeSet(rightTypes))
+      updatedState.declareIdentifier(identifier,TypeSet(rightTypes))
     }
   }
+
   def declareIdentifier(identifier: ast.Identifier, possibleType: CypherType, possibleTypes: CypherType*): Either[SemanticError, SemanticState] =
     declareIdentifier(identifier, (possibleType +: possibleTypes).toSet)
 
@@ -121,7 +130,8 @@ case class SemanticState(
           val expectedTypes = possibleTypes.formattedString
           Left(SemanticError(
             s"Type mismatch: ${identifier.name} already defined with conflicting type ${existingTypes} (expected ${expectedTypes})",
-            identifier.token, symbol.tokens))
+            identifier.token, symbol.tokens
+          ))
         }
     }
 

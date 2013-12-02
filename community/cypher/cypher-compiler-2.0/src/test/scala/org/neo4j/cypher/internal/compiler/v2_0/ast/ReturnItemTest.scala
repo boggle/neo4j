@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package org.neo4j.cypher.internal.compiler.v2_0.ast
 
 import org.scalatest.Matchers
@@ -38,7 +39,7 @@ class ReturnItemTest extends JUnitSuite with Matchers {
     val state = SemanticState.clean.declareIdentifier(identifier, CollectionType(NumberType())).right.get
 
     // when
-    val errors = item.semanticCheck(state).errors
+    val errors = checkItem(item, state).errors
 
     // then
     errors should have size 0
@@ -50,7 +51,7 @@ class ReturnItemTest extends JUnitSuite with Matchers {
     val state = SemanticState.clean.declareIdentifier(identifier, NumberType()).right.get
 
     // when
-    val errors = item.semanticCheck(state).errors
+    val errors = checkItem(item, state).errors
 
     // then
     errors should have size 1
@@ -63,7 +64,7 @@ class ReturnItemTest extends JUnitSuite with Matchers {
     val state = SemanticState.clean.declareIdentifier(identifier, CollectionType(NumberType())).right.get
 
     // when
-    val errors = item.semanticCheck(state).errors
+    val errors = checkItem(item, state).errors
 
     // then
     errors should have size 0
@@ -75,10 +76,16 @@ class ReturnItemTest extends JUnitSuite with Matchers {
     val state = SemanticState.clean.declareIdentifier(identifier, NumberType()).right.get
 
     // when
-    val errors = item.semanticCheck(state).errors
+    val errors = checkItem(item, state).errors
 
     // then
     errors should have size 1
     errors.head.msg should include("Type mismatch: x already defined with conflicting type Number")
   }
+
+  private def checkItem(item: ReturnItem, state: SemanticState) = {
+    val (check, _) = item.semanticCheckReferences((SemanticCheckResult.success, Set.empty))
+    check(state)
+  }
 }
+

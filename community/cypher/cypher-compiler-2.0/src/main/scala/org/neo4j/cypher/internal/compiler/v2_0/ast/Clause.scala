@@ -40,7 +40,7 @@ sealed trait ClosingClause extends Clause {
   def limit: Option[Limit]
 
   def semanticCheck =
-    returnItems.semanticCheck then
+    returnItems.semanticCheck
     checkSortItems then
     checkSkipLimit
 
@@ -55,8 +55,7 @@ sealed trait ClosingClause extends Clause {
     s => (skip ++ limit).semanticCheck(SemanticState.clean).errors
 
   def closeLegacyQueryBuilder(builder: commands.QueryBuilder) : commands.Query = {
-    val returns = returnItems.toCommands
-    val unwinds = returnItems.toUnwindCommands
+    val (returns, unwinds) = returnItems.toCommands
     extractAggregationExpressions(returns).foreach { builder.aggregation(_:_*) }
     skip.foreach { s => builder.skip(s.toCommand) }
     limit.foreach { l => builder.limit(l.toCommand) }

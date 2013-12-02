@@ -78,8 +78,6 @@ abstract class Expression extends AstNode with SemanticChecking {
     s => s.constrainType(this, token, typeGen(s))
   final def constrainType(possibleTypes: => TypeSet): SemanticState => Either[SemanticError, SemanticState] =
     _.constrainType(this, token, possibleTypes)
-  final def unwindType(): SemanticState => Either[SemanticError, SemanticState] =
-    _.unwindType(this, token)
 
   def toCommand: CommandExpression
   def toPredicate: CommandPredicate = CoercedPredicate(toCommand)
@@ -110,6 +108,9 @@ case class Identifier(name: String, token: InputToken) extends Expression {
       (_: SemanticState).declareIdentifier(this, possibleTypes)
   final def declare(possibleType: CypherType, possibleTypes: CypherType*) =
       (_: SemanticState).declareIdentifier(this, possibleType, possibleTypes:_*)
+  final def declareWithIteratedType(expression: Expression): SemanticState => Either[SemanticError, SemanticState] =
+    _.declareWithIteratedType(this, expression)
+
   final def declare(typeGen: SemanticState => TypeSet) =
       (s: SemanticState) => s.declareIdentifier(this, typeGen(s))
   final def implicitDeclaration(possibleType: CypherType, possibleTypes: CypherType*) =

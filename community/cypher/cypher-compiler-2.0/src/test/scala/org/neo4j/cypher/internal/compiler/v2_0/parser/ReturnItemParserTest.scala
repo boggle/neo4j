@@ -27,7 +27,10 @@ import org.parboiled.scala._
 import org.neo4j.cypher.internal.compiler.v2_0.ast.{UnwindMode, OptionalUnwindMode, RegularUnwindMode, ReturnItem}
 import org.scalatest.junit.JUnitSuite
 
-class ReturnItemParserTest extends JUnitSuite with ParserTest[ast.ReturnItem, (commands.ReturnItem, Option[commands.Unwind])] with Query with Expressions {
+class ReturnItemParserTest
+  extends JUnitSuite
+  with ParserTest[ast.ReturnItem, (commands.ReturnItem, Option[commands.Unwind])] with Query with Expressions {
+
   implicit val parserToTest = ReturnItem ~ EOI
 
   @Test def should_support_regular_unwinding() {
@@ -45,17 +48,17 @@ class ReturnItemParserTest extends JUnitSuite with ParserTest[ast.ReturnItem, (c
     parsing("x AS y") shouldGive aliasedItem("x", "y", None)
   }
 
-  def convert(astNode: ReturnItem): (commands.ReturnItem, Option[commands.Unwind]) = (astNode.toCommand, astNode.toUnwindCommand)
+  def convert(astNode: ReturnItem): (commands.ReturnItem, Option[commands.Unwind]) = astNode.toCommand
 
-  def unaliasedItem(identifier: String, optUnwindMode: Option[UnwindMode]) = {
+  def unaliasedItem(identifier: String, unwindMode: Option[UnwindMode]) = {
     val item: commands.ReturnItem = commands.ReturnItem(expressions.Identifier(identifier), identifier, renamed = false)
-    val optUnwind = optUnwindMode.map(commands.Unwind(_, item, containedAggregate = false))
-    (item, optUnwind)
+    val unwind = unwindMode.map(commands.Unwind(_, item, containedAggregate = false))
+    (item, unwind)
   }
 
-  def aliasedItem(identifier: String, name: String, optUnwindMode: Option[UnwindMode]) = {
+  def aliasedItem(identifier: String, name: String, unwindMode: Option[UnwindMode]) = {
     val item: commands.ReturnItem = commands.ReturnItem(expressions.Identifier(identifier), name, renamed = true)
-    val optUnwind = optUnwindMode.map(commands.Unwind(_, item, containedAggregate = false))
-    (item, optUnwind)
+    val unwind = unwindMode.map(commands.Unwind(_, item, containedAggregate = false))
+    (item, unwind)
   }
 }

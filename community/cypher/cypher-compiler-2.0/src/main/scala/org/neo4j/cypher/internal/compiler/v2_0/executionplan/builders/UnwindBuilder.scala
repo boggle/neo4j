@@ -32,7 +32,8 @@ class UnwindBuilder extends PlanBuilder {
 
   def apply(plan: ExecutionPlanInProgress, ctx: PlanContext): ExecutionPlanInProgress = {
     val unsolvedUnwinds = plan.query.unwinds.filter(_.unsolved).map(_.token)
-
+    
+    // forbid aggregates in unwind
     for ( unwind <- unsolvedUnwinds if unwind.containedAggregate ) {
       throw new InvalidExpressionException(s"Cannot unwind aggregate expression for ${unwind.name}")
     }

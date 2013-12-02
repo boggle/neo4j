@@ -17,10 +17,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher.internal
+package org.neo4j.cypher
 
 import org.scalatest.Matchers
-import org.neo4j.cypher.{InvalidExpressionException, ExecutionEngineHelper}
 import org.junit.Test
 
 class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
@@ -91,7 +90,7 @@ class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
 
   @Test def should_unwind_together_with_regular_values() {
     // given
-    val result = execute("RETURN UNWIND [1, 3] AS x, 12 as z").toSet
+    val result = execute("RETURN UNWIND [1, 3] AS x, 12 AS z").toSet
 
     // then
     result should be(Set(Map("x" -> 1, "z" -> 12), Map("x" -> 3, "z" -> 12)))
@@ -99,7 +98,7 @@ class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
 
   @Test def should_optional_unwind_together_with_regular_values() {
     // given
-    val result = execute("RETURN OPTIONAL UNWIND [1, 3] AS x, 12 as z").toSet
+    val result = execute("RETURN OPTIONAL UNWIND [1, 3] AS x, 12 AS z").toSet
 
     // then
     result should be(Set(Map("x" -> 1, "z" -> 12), Map("x" -> 3, "z" -> 12)))
@@ -107,7 +106,7 @@ class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
 
   @Test def should_unwind_and_sort() {
     // given
-    val result = execute("RETURN UNWIND [3, 2, 1] AS x, 12 as z ORDER BY x").toList
+    val result = execute("RETURN UNWIND [3, 2, 1] AS x, 12 aS z ORDER BY x").toList
 
     // then
     result should be(List(Map("x" -> 1, "z" -> 12), Map("x" -> 2, "z" -> 12), Map("x" -> 3, "z" -> 12)))

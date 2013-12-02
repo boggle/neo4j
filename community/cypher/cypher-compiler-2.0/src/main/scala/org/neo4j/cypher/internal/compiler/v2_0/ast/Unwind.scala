@@ -23,7 +23,7 @@ import org.neo4j.cypher.internal.compiler.v2_0.commands
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 final case class Unwind(mode: UnwindMode, token: InputToken) extends AstNode {
-  def toUnwindCommand(item: commands.ReturnItem): commands.Unwind =
+  def toCommand(item: commands.ReturnItem): commands.Unwind =
     commands.Unwind(mode, item, item.expression.containsAggregate)
 }
 
