@@ -66,6 +66,20 @@ class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
 
   @Test def should_unwind_multiple_collections() {
     // given
+    val result = execute("RETURN UNWIND [1, 3] AS x, UNWIND [2, 4] AS y").toSet
+      .toSet
+
+    // then
+    result should be(Set(
+      Map("x" -> 1, "y" -> 2),
+      Map("x" -> 1, "y" -> 4),
+      Map("x" -> 3, "y" -> 2),
+      Map("x" -> 3, "y" -> 4)
+    ))
+  }
+
+  @Test def should_unwind_multiple_collections_2() {
+    // given
     val result = execute("WITH UNWIND [1, 3] AS x, UNWIND [2, 4] AS y RETURN x*y AS z").columnAs[List[Number]]("z").toSet
 
     // then
@@ -165,6 +179,13 @@ class UnwindingAcceptanceTest extends ExecutionEngineHelper with Matchers {
     // when
     evaluating {
       execute("MATCH (n)-[r]->(m) RETURN n, UNWIND [count(m)] AS x").toList
+    } should produce[InvalidExpressionException]
+  }
+
+  @Test def should_reject_mixing_aggregate_expressions_and_unwinding() {
+=    // when
+    evaluating {
+      execute("MATCH (n)-[r]->(m) RETURN collect(n), UNWIND [1,2,3] AS x").toList
     } should produce[InvalidExpressionException]
   }
 }
