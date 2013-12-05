@@ -83,9 +83,6 @@ class ReturnItemTest extends JUnitSuite with Matchers {
     errors.head.msg should include("Type mismatch: x already defined with conflicting type Number")
   }
 
-  private def checkItem(item: ReturnItem, state: SemanticState) = {
-    val (check, _) = item.semanticCheckReferences((SemanticCheckResult.success, Set.empty))
-    check(state)
-  }
+  private def checkItem(item: ReturnItem, state: SemanticState) = item.semanticCheck(state)
 }
 

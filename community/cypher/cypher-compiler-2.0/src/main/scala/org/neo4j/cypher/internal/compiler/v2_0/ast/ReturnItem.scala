@@ -23,7 +23,6 @@ import org.neo4j.cypher.internal.compiler.v2_0._
 import org.neo4j.cypher.internal.compiler.v2_0.symbols.CollectionType
 import scala.Some
 import org.neo4j.cypher.internal.compiler.v2_0.symbols.AnyType
-import org.neo4j.cypher.internal.compiler.v2_0.ast.Expression.SemanticContext
 
 sealed trait ReturnItems extends AstNode with SemanticCheckable {
   def declareIdentifiers(currentState: SemanticState): SemanticCheck
@@ -43,9 +42,7 @@ case class ListedReturnItems(items: Seq[ReturnItem], token: InputToken) extends 
     })
   }
 
-  def semanticCheck = items.foldLeft((SemanticCheckResult.success, Set.empty[String])) {
-    (acc: (SemanticCheck, Set[String]), item: ReturnItem) => item.semanticCheckReferences(acc)
-  }._1
+  def semanticCheck = items.foldLeft(SemanticCheckResult.success)( (f, o) => f then o.semanticCheck )
 
   def toCommands = {
     val (itemCommands, optUnwindCommands) = items.map(_.toCommand).unzip
@@ -69,51 +66,33 @@ sealed trait ReturnItem extends AstNode {
 
   def unwind: Option[Unwind]
 
-  def semanticCheckReferences(in: (SemanticCheck, Set[String])): (SemanticCheck, Set[String]) = {
-    val (priorCheck, aliasedIdentifiers) = in
-
-    val (itemCommand, _) = toCommand
-    val referenced = itemCommand.expression.symbolTableDependencies
-
-    val newCheck = {
-      val checkReferences = { (s: SemanticState) =>
-        val foo = expression.semanticCheck(SemanticContext.Simple)(s).state
-        val conflicting: Set[String] = aliasedIdentifiers.intersect(referenced)
-        if (conflicting.isEmpty) {
-          Right(s)
-        } else {
-          Left(SemanticError(
-            s"Cannot reference previous return item ${conflicting.mkString(", ")} in same RETURN/WITH.",
-            expression.token
-          ))
-        }
+  def semanticCheck: SemanticCheck =  {
+    val hideIdentifier = (s: SemanticState) => {
+      val nextState = alias match {
+        case Some(alias_) if unwind.isDefined =>
+          s.hideIdentifier(alias_)
+        case Some(alias_) =>
+          expression match {
+            case Identifier(name, _) => s
+            case _                   => s.hideIdentifier(alias_)
+          }
+        case _ =>
+          s
       }
 
-      unwind match {
-        case Some(unwind) => semanticCheckExpression then checkReferences then constrainToCollection
-        case None         => semanticCheckExpression then checkReferences
-      }
+      Right(nextState)
     }
 
-    val newAliasedIdentifiers = if (alias.isDefined) {
-      if (unwind.isDefined) {
-        aliasedIdentifiers + name
-      } else {
-        expression match {
-          case Identifier(name, _) => aliasedIdentifiers
-          case _                   => aliasedIdentifiers + name
-        }
-      }
-    } else {
-      aliasedIdentifiers
+    unwind match {
+      case Some(_) => (semanticCheckExpression ifOkThen constrainToCollection) then hideIdentifier
+      case None    => semanticCheckExpression then hideIdentifier
     }
-
-
-    (priorCheck then newCheck, newAliasedIdentifiers)
   }
 
+
+  private def semanticCheckExpression: SemanticCheck = expression.semanticCheck(Expression.SemanticContext.Results)
+
   private def constrainToCollection = expression.constrainType(CollectionType(AnyType()))
-  private def semanticCheckExpression = expression.semanticCheck(Expression.SemanticContext.Results)
 
   def toCommand: (commands.ReturnItem, Option[commands.Unwind])
 }

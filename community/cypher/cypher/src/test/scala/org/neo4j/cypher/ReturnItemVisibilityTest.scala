@@ -35,7 +35,7 @@ class ReturnItemVisibilityTest extends ExecutionEngineHelper with Matchers {
   @Test def should_hide_unwound_and_unaliased_identifier() {
     // given
     evaluating {
-      execute("WITH [1] AS x, [2] AS y RETURN UNWIND y, y as x").toSet
+      execute("WITH [1] AS y RETURN UNWIND y, y AS x").toSet
     } should produce[SyntaxException]
   }
 

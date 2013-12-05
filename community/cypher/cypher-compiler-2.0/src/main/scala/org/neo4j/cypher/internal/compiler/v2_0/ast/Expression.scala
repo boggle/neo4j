@@ -99,8 +99,11 @@ trait PredicateExpression extends Expression with SimpleTypedExpression {
 case class Identifier(name: String, token: InputToken) extends Expression {
   // check the identifier is defined and, if not, define it so that later errors are suppressed
   def semanticCheck(ctx: SemanticContext) = s => this.ensureDefined()(s) match {
-    case Right(ss) => SemanticCheckResult.success(ss)
-    case Left(error) => SemanticCheckResult.error(declare(AnyType())(s).right.get, error)
+    case Right(ss) =>
+      SemanticCheckResult.success(ss)
+    case Left(error) =>
+      val declared: Either[SemanticError, SemanticState] = declare(AnyType())(s)
+      SemanticCheckResult.error(declared.right.get, error)
   }
 
   // double-dispatch helpers

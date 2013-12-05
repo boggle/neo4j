@@ -26,7 +26,7 @@ import scala.collection.breakOut
 import org.neo4j.cypher.internal.compiler.v2_0.symbols._
 import org.neo4j.cypher.internal.compiler.v2_0.ast.Identifier
 
-case class Symbol(identifiers: Set[ast.Identifier], types: TypeSet) {
+case class Symbol(identifiers: Set[ast.Identifier], types: TypeSet, visible: Boolean = true) {
   def tokens = identifiers.map(_.token)(breakOut[Set[ast.Identifier], InputToken, SortedSet[InputToken]])
 }
 
@@ -107,6 +107,8 @@ case class SemanticState(
     symbolTable.get(identifier.name) match {
       case None         =>
         Right(updateIdentifier(identifier, possibleTypes, Set(identifier)))
+      case Some(symbol) if !symbol.visible =>
+        Right(updateIdentifier(identifier, possibleTypes, Set(identifier)))
       case Some(symbol) =>
         if (symbol.identifiers.contains(identifier))
           Right(this)
@@ -135,10 +137,16 @@ case class SemanticState(
         }
     }
 
+  def hideIdentifier(identifier: Identifier): SemanticState = {
+    this.symbol(identifier.name) match {
+      case None          => this
+      case Some(symbol)  => copy(symbolTable = symbolTable + (identifier.name -> symbol.copy(visible = false)))
+    }
+  }
   def ensureIdentifierDefined(identifier: ast.Identifier): Either[SemanticError, SemanticState] =
     this.symbol(identifier.name) match {
-      case None         => Left(SemanticError(s"${identifier.name} not defined", identifier.token))
-      case Some(symbol) => Right(updateIdentifier(identifier, symbol.types, symbol.identifiers + identifier))
+      case Some(symbol) if symbol.visible => Right(updateIdentifier(identifier, symbol.types, symbol.identifiers + identifier))
+      case _                              => Left(SemanticError(s"${identifier.name} not defined", identifier.token))
     }
 
   def importSymbols(symbols: Map[String, Symbol]) =
