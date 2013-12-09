@@ -77,7 +77,7 @@ abstract class Expression extends Typed with TypeSafe with AstNode[Expression] {
 }
 
 case class CachedExpression(key:String, typ:CypherType) extends Expression {
-  def apply(ctx: ExecutionContext)(implicit state: QueryState) = ctx(key)
+  def apply(ctx: ExecutionContext)(implicit state: QueryState) = ctx(NamedSlot(key))
 
   def rewrite(f: (Expression) => Expression) = f(this)
 

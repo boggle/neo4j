@@ -47,11 +47,11 @@ case class ShortestPathExpression(ast: ShortestPath) extends Expression with Pat
     shortestPathStrategy.findResult(start, end)
   }
 
-  def getEndPoint(m: ExecutionContext, start: SingleNode): Node = m.getOrElse(start.name,
+  def getEndPoint(m: ExecutionContext, start: SingleNode): Node = m.getOrElse(NamedSlot(start.name),
     throw new SyntaxException(s"To find a shortest path, both ends of the path need to be provided. Couldn't find `${start}`")).asInstanceOf[Node]
 
   private def anyStartpointsContainNull(m: ExecutionContext): Boolean =
-    symbolTableDependencies.exists(key => m.get(key) match {
+    symbolTableDependencies.exists(key => m.get(NamedSlot(key)) match {
       case None => throw new ThisShouldNotHappenError("Andres", "This execution plan should not exist.")
       case Some(null) => true
       case Some(x) => false

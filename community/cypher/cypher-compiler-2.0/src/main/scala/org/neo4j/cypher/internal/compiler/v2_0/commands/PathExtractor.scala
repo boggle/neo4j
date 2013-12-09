@@ -22,13 +22,13 @@ package org.neo4j.cypher.internal.compiler.v2_0.commands
 import org.neo4j.cypher.internal.PathImpl
 import org.neo4j.graphdb.{PropertyContainer, Path}
 import collection.JavaConverters._
-import org.neo4j.cypher.internal.compiler.v2_0.ExecutionContext
+import org.neo4j.cypher.internal.compiler.v2_0.{NamedSlot, ExecutionContext}
 
 // TODO: This is duplicated with NamedPathPipe
 trait PathExtractor {
   def pathPattern:Seq[Pattern]
   def getPath(ctx: ExecutionContext): Path = {
-    def get(x: String): PropertyContainer = ctx(x).asInstanceOf[PropertyContainer]
+    def get(x: String): PropertyContainer = ctx(NamedSlot(x)).asInstanceOf[PropertyContainer]
 
     val firstNode: String = getFirstNode
 
@@ -56,7 +56,7 @@ trait PathExtractor {
 
   //WARNING: This method can return NULL
   private def getPath(m: ExecutionContext, key: String, soFar: List[PropertyContainer]): List[PropertyContainer] = {
-    val m1 = m(key)
+    val m1 = m(NamedSlot(key))
 
     if (m1 == null)
       return null::Nil

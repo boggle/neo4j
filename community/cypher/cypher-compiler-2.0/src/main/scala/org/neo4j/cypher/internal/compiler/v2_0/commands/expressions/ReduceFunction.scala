@@ -27,13 +27,13 @@ import org.neo4j.cypher.internal.helpers._
 case class ReduceFunction(collection: Expression, id: String, expression: Expression, acc:String, init:Expression )
   extends NullInNullOutExpression(collection) with CollectionSupport {
   def compute(value: Any, m: ExecutionContext)(implicit state: QueryState) = {
-    val initMap = m.copy().update(acc, init(m))
+    val initMap = m.copy().update(NamedSlot(acc), init(m))
     val computedMap = makeTraversable(value).foldLeft(initMap) { (accMap, k) => {
-        val innerMap = accMap.copy().update(id, k)
-        innerMap.copy().update(acc, expression(innerMap))
+        val innerMap = accMap.copy().update(NamedSlot(id), k)
+        innerMap.copy().update(NamedSlot(acc), expression(innerMap))
       }
     }
-    computedMap(acc)
+    computedMap(NamedSlot(acc))
   }
                     
   def rewrite(f: (Expression) => Expression) =

@@ -56,10 +56,10 @@ class EagerAggregationPipe(source: Pipe, val keyExpressions: Map[String, Express
       val result = ExecutionContext.empty
 
       //add key values
-      (keyNames zip key.original).foreach(result.update)
+      (keyNames zip key.original).foreach(pair => result.update(NamedSlot(pair._1), pair._2))
 
       //add aggregated values
-      (aggregationNames zip aggregator.map(_.result)).foreach(result.update)
+      (aggregationNames zip aggregator.map(_.result)).foreach(pair => result.update(NamedSlot(pair._1), pair._2))
 
       result
     }
@@ -68,12 +68,12 @@ class EagerAggregationPipe(source: Pipe, val keyExpressions: Map[String, Express
       val aggregationNamesAndFunctions = aggregationNames zip aggregations.map(_._2.createAggregationFunction.result)
       val result = ExecutionContext.empty(aggregationNamesAndFunctions.size)
 
-      aggregationNamesAndFunctions.foreach(result.update)
+      aggregationNamesAndFunctions.foreach(pair => result.update(NamedSlot(pair._1), pair._2))
       Iterator.single(result)
     }
 
     input.foreach(ctx => {
-      val groupValues: NiceHasher = new NiceHasher(keyNames.map(ctx.apply))
+      val groupValues: NiceHasher = new NiceHasher(keyNames.map(name => ctx.apply(NamedSlot(name))))
       val aggregateFunctions: Seq[AggregationFunction] = aggregations.map(_._2.createAggregationFunction).toSeq
       val (_, functions) = result.getOrElseUpdate(groupValues, (ctx, aggregateFunctions))
       functions.foreach(func => func(ctx)(state))

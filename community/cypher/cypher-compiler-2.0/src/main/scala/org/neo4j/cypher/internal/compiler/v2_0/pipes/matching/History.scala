@@ -66,11 +66,11 @@ class AddedHistory(val parent : History, val pair : MatchingPair) extends Histor
 
   def contains(p : MatchingPair) = pair == p || parent.contains(p)
 
-  def add(pair: MatchingPair) = if (contains(pair)) this else new AddedHistory(this,pair)
+  def add(pair: MatchingPair) = if (contains(pair)) this else new AddedHistory(this, pair)
 
   lazy val toMap = {
     val result: ExecutionContext = parent.toMap.copy()
-    toSeq(pair).foreach(result.update)
+    toSeq(pair).foreach(pair => result.update(NamedSlot(pair._1), pair._2))
     result
   }
 

@@ -29,21 +29,22 @@ class PatternMatchingBuilder(patternGraph: PatternGraph,
                              predicates: Seq[Predicate],
                              identifiersInClause: Set[String]) extends MatcherBuilder {
   def getMatches(sourceRow: ExecutionContext, state:QueryState): Traversable[ExecutionContext] = {
-    val bindings: Map[String, Any] = sourceRow.collect {
+    val bindings: Map[Slot, Any] = sourceRow.collect {
       case pair @ (_, value: PropertyContainer) => pair
     }.toMap
-    val boundPairs: Map[String, MatchingPair] = extractBoundMatchingPairs(bindings)
+    val boundPairs: Map[Slot, MatchingPair] = extractBoundMatchingPairs(bindings)
 
     val undirectedBoundRelationships: Iterable[PatternRelationship] = bindings.keys.
-      filter(z => patternGraph.contains(z)).
-      filter(patternGraph(_).isInstanceOf[PatternRelationship]).
-      map(patternGraph(_).asInstanceOf[PatternRelationship]).
+      filter(z => patternGraph.contains(z.name)).
+      filter(z => patternGraph(z.name).isInstanceOf[PatternRelationship]).
+      map(z => patternGraph(z.name).asInstanceOf[PatternRelationship]).
       filter(_.dir == Direction.BOTH)
 
     val mandatoryPattern: Traversable[ExecutionContext] = if (undirectedBoundRelationships.isEmpty) {
       createPatternMatcher(boundPairs, includeOptionals = false, sourceRow, state)
     } else {
-      val boundRels: Seq[Map[String, MatchingPair]] = createListOfBoundRelationshipsWithHangingNodes(undirectedBoundRelationships, bindings)
+      val boundRels: Seq[Map[Slot, MatchingPair]] =
+        createListOfBoundRelationshipsWithHangingNodes(undirectedBoundRelationships, bindings)
 
       boundRels.
         flatMap(relMap => createPatternMatcher(relMap ++ boundPairs, includeOptionals = false, sourceRow, state))
@@ -52,9 +53,10 @@ class PatternMatchingBuilder(patternGraph: PatternGraph,
     mandatoryPattern
   }
 
-  private def createListOfBoundRelationshipsWithHangingNodes(undirectedBoundRelationships: Iterable[PatternRelationship], bindings: Map[String, Any]): Seq[Map[String, MatchingPair]] = {
+  private def createListOfBoundRelationshipsWithHangingNodes(undirectedBoundRelationships:
+                                                             Iterable[PatternRelationship], bindings: Map[Slot, Any]): Seq[Map[Slot, MatchingPair]] = {
     val toList = undirectedBoundRelationships.map(patternRel => {
-      val rel = bindings(patternRel.key).asInstanceOf[Relationship]
+      val rel = bindings(NamedSlot(patternRel.key)).asInstanceOf[Relationship]
       val x = patternRel.key -> MatchingPair(patternRel, rel)
 
       // Outputs the first direction of the pattern relationship
@@ -67,11 +69,11 @@ class PatternMatchingBuilder(patternGraph: PatternGraph,
 
       Seq(Map(x, a1, a2), Map(x, b1, b2))
     }).toList
-    cartesian(toList).map(_.reduceLeft(_ ++ _))
+    cartesian(toList).map(_.reduceLeft(_ ++ _)).map(_.map(pair => (NamedSlot(pair._1).asInstanceOf[Slot], pair._2)))
   }
 
   private def createNullValuesForOptionalElements(matchedGraph: ExecutionContext): ExecutionContext = {
-    val m = (patternGraph.keySet -- matchedGraph.slots).map(_ -> null).toStream
+    val m = (patternGraph.keySet.map(NamedSlot(_)).toSet -- matchedGraph.slots).map(_ -> null).toStream
     matchedGraph.copy().update(m)
   }
 
@@ -83,31 +85,36 @@ class PatternMatchingBuilder(patternGraph: PatternGraph,
         result.flatMap(r => element.map(e => e :: r))
     ).toSeq
 
-  private def createPatternMatcher(boundPairs: Map[String, MatchingPair], includeOptionals: Boolean, source: ExecutionContext, state:QueryState): Traversable[ExecutionContext] =
-      new PatternMatcher(boundPairs, predicates, source, state, identifiersInClause)
+  private def createPatternMatcher(boundPairs: Map[Slot, MatchingPair], includeOptionals: Boolean,
+                                   source: ExecutionContext, state:QueryState): Traversable[ExecutionContext] = {
+      val pairs = boundPairs.map(pair => (pair._1.name, pair._2))
+      new PatternMatcher(pairs, predicates, source, state, identifiersInClause)
+  }
 
-  private def extractBoundMatchingPairs(bindings: Map[String, Any]): Map[String, MatchingPair] = bindings.flatMap {
+  private def extractBoundMatchingPairs(bindings: Map[Slot, Any]): Map[Slot, MatchingPair] = bindings.flatMap {
 
-    case (key, node: Node) if patternGraph.contains(key)        => Seq(key -> MatchingPair(patternGraph(key), node))
-    case (key, rel: Relationship) if patternGraph.contains(key) =>
-      val pRel = patternGraph(key).asInstanceOf[PatternRelationship]
+    case (key, node: Node) if patternGraph.contains(key.name)        => Seq(key -> MatchingPair(patternGraph(key.name), node))
+    case (key, rel: Relationship) if patternGraph.contains(key.name) =>
+      val pRel = patternGraph(key.name).asInstanceOf[PatternRelationship]
 
-      def extractMatchingPairs(startNode: PatternNode, endNode: PatternNode): Seq[(String, MatchingPair)] = {
-        val t1 = startNode.key -> MatchingPair(startNode, rel.getStartNode)
-        val t2 = endNode.key -> MatchingPair(endNode, rel.getEndNode)
-        val t3 = pRel.key -> MatchingPair(pRel, rel)
+      def extractMatchingPairs(startNode: PatternNode, endNode: PatternNode): Seq[(Slot, MatchingPair)] = {
+        val t1 = NamedSlot(startNode.key) -> MatchingPair(startNode, rel.getStartNode)
+        val t2 = NamedSlot(endNode.key) -> MatchingPair(endNode, rel.getEndNode)
+        val t3 = NamedSlot(pRel.key) -> MatchingPair(pRel, rel)
 
         Seq(t1, t2, t3)
       }
 
-      pRel.dir match {
+      val result: Seq[(Slot, MatchingPair)] = pRel.dir match {
         case Direction.OUTGOING                            => extractMatchingPairs(pRel.startNode, pRel.endNode)
         case Direction.INCOMING                            => extractMatchingPairs(pRel.endNode, pRel.startNode)
-        case Direction.BOTH if bindings.contains(pRel.key) => Seq(pRel.key -> MatchingPair(pRel, rel))
+        case Direction.BOTH if bindings.contains(NamedSlot(pRel.key)) => Seq(NamedSlot(pRel.key) -> MatchingPair(pRel, rel))
         case Direction.BOTH                                => Seq.empty
       }
 
+      result
+
     case (key, _) => Nil
-  }
+  }.toMap
 }
 

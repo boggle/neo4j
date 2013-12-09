@@ -46,7 +46,7 @@ class ExtractPipe(val source: Pipe, val expressions: Map[String, Expression]) ex
 
   protected def internalCreateResults(input: Iterator[ExecutionContext], state: QueryState) = input.map(
     subgraph => {
-      expressions.foreach(subgraph.update)
+      expressions.map(pair => (NamedSlot(pair._1), pair._2)).foreach(subgraph.update)
       subgraph
   })
 

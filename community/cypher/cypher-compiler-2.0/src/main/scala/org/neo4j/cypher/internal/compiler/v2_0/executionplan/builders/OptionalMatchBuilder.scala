@@ -22,7 +22,7 @@ package org.neo4j.cypher.internal.compiler.v2_0.executionplan.builders
 import org.neo4j.cypher.internal.compiler.v2_0.executionplan.{ExecutionPlanInProgress, PlanBuilder, Phase}
 import org.neo4j.cypher.internal.compiler.v2_0.spi.PlanContext
 import org.neo4j.cypher.internal.compiler.v2_0.pipes.{NullPipe, PipeWithSource, QueryState, Pipe}
-import org.neo4j.cypher.internal.compiler.v2_0.{PlanDescription, ExecutionContext}
+import org.neo4j.cypher.internal.compiler.v2_0.{NamedSlot, PlanDescription, ExecutionContext}
 import org.neo4j.cypher.internal.compiler.v2_0.symbols.SymbolTable
 
 case class OptionalMatchBuilder(solveMatch: Phase) extends PlanBuilder {
@@ -64,7 +64,7 @@ case class OptionalMatchBuilder(solveMatch: Phase) extends PlanBuilder {
 
     private def createNulls(in: ExecutionContext): Iterator[ExecutionContext] = {
       val context = in.copy()
-      introducedIdentifiers foreach { context.update(_, null) }
+      introducedIdentifiers foreach { x => context.update(NamedSlot(x), null) }
       Iterator(context)
     }
 

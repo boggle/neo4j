@@ -36,6 +36,6 @@ case object In extends PredicateFunction {
   protected def internalToPredicate(invocation: FunctionInvocation) = {
     val left = invocation.arguments(0)
     val right = invocation.arguments(1)
-    commands.AnyInCollection(right.toCommand, "-_-INNER-_-", commands.Equals(left.toCommand, commandexpressions.Identifier("-_-INNER-_-")))
+    commands.AnyInCollection(right.toCommand, NamedSlot("-_-INNER-_-"), commands.Equals(left.toCommand, commandexpressions.Identifier("-_-INNER-_-")))
   }
 }

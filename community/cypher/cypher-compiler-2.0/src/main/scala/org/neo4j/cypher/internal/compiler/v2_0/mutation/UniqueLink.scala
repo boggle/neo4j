@@ -44,7 +44,7 @@ case class UniqueLink(start: NamedExpectation, end: NamedExpectation, rel: Named
 
   def exec(context: ExecutionContext, state: QueryState): Option[(UniqueLink, CreateUniqueResult)] = {
 
-    def getNode(expect: NamedExpectation): Option[Node] = context.get(expect.name) match {
+    def getNode(expect: NamedExpectation): Option[Node] = context.get(NamedSlot(expect.name)) match {
       case Some(n: Node)                             => Some(n)
       case Some(x)                                   => throw new CypherTypeException("Expected `%s` to a node, but it is a %s".format(expect.name, x))
       case None if expect.e.isInstanceOf[Identifier] => None
@@ -123,7 +123,7 @@ case class UniqueLink(start: NamedExpectation, end: NamedExpectation, rel: Named
       case (None, Some(startNode)) => oneNode(startNode, dir.reverse(), start)
 
       case (Some(startNode), Some(endNode)) => {
-        if (context.contains(rel.name))
+        if (context.contains(NamedSlot(rel.name)))
           None //We've already solved this pattern.
         else
           twoNodes(startNode, endNode)

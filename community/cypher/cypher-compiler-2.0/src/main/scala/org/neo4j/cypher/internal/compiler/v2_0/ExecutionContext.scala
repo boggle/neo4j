@@ -19,21 +19,32 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_0
 
-import pipes.MutableMaps
 import collection.mutable.{Map => MutableMap}
 import scala.collection
 
-object ExecutionContext {
-  def empty = new MapExecutionContext()
-  def empty(size: Int) = new MapExecutionContext(MutableMaps.create(size))
+abstract class Slot {
+  def name: String
+}
 
-  def from(in: (String, Any)*) = ExecutionContext.empty.update(in)
-  def from(in: Iterable[(String, Any)]) = ExecutionContext.empty.update(in)
+sealed case class NamedSlot(name: String) extends Slot
+
+object ExecutionContext {
+
+  def empty = new MapExecutionContext(
+    new collection.mutable.OpenHashMap[Slot, Any]()
+  )
+
+  def empty(size: Int) =
+    new MapExecutionContext(
+      new collection.mutable.OpenHashMap[Slot, Any](if (size < 16) 16 else size)
+    )
+
+  def from(in: (Slot, Any)*) = ExecutionContext.empty.update(in)
+
+  def from(in: Iterable[(Slot, Any)]) = ExecutionContext.empty.update(in)
 }
 
 abstract class ExecutionContext {
-  type Slot = String
-
   def slots: Set[Slot]
 
   def get(slot: Slot): Option[Any]
@@ -70,19 +81,19 @@ abstract class ExecutionContext {
 
   def copy(): ExecutionContext
 
-  def toMap(): Map[String, Any]
+  def toMap: Map[String, Any]
 }
 
-class MapExecutionContext(val m: MutableMap[String, Any] = MutableMaps.empty) extends ExecutionContext {
+class MapExecutionContext(val m: MutableMap[Slot, Any]) extends ExecutionContext {
 
   def slots: Set[Slot] = {
-    val slotSet: collection.Set[String] = m.keySet
-    slotSet.asInstanceOf[Set[String]]
+    val slotSet: collection.Set[Slot] = m.keySet
+    slotSet.asInstanceOf[Set[Slot]]
   }
 
   def contains(slot: Slot): Boolean = m.contains(slot)
 
-  def get(slot: MapExecutionContext#Slot): Option[Any] = m.get(slot)
+  def get(slot: Slot): Option[Any] = m.get(slot)
 
   def getOrElse(slot: Slot, f: => Any): Any = m.getOrElse(slot, f)
 
@@ -104,57 +115,5 @@ class MapExecutionContext(val m: MutableMap[String, Any] = MutableMaps.empty) ex
 
   def copy(): ExecutionContext = new MapExecutionContext(m.clone())
 
-  def toMap(): Map[String, Any] = m.toMap
+  def toMap: Map[String, Any] = m.map { case (k, v) => (k.name, v) }.toMap
 }
-
-
-
-//case class ExecutionContext(m: MutableMap[String, Any] = MutableMaps.empty,
-//                            mutationCommands: Queue[UpdateAction] = Queue.empty)
-//  extends MutableMap[String, Any] {
-//  def get(key: String): Option[Any] = m.get(key)
-//
-//  def iterator: Iterator[(String, Any)] = m.iterator
-//
-//  override def size = m.size
-//
-//  def ++(other: ExecutionContext): ExecutionContext = copy(m = m ++ other.m)
-//
-//  override def foreach[U](f: ((String, Any)) => U) {
-//    m.foreach(f)
-//  }
-//
-//  def +=(kv: (String, Any)) = {
-//    m += kv
-//    this
-//  }
-//
-//  def -=(key: String) = {
-//    m -= key
-//    this
-//  }
-//
-//  override def toMap[T, U](implicit ev: (String, Any) <:< (T, U)): immutable.Map[T, U] = m.toMap(ev)
-//
-//  def newWith(newEntries: Seq[(String, Any)]) =
-//    createWithNewMap(MutableMaps.create(this.m) ++= newEntries)
-//
-//  def newWith(newEntries: scala.collection.Map[String, Any]) =
-//    createWithNewMap(MutableMaps.create(this.m) ++= newEntries)
-//
-//  def newFrom(newEntries: Seq[(String, Any)]) =
-//    createWithNewMap(MutableMaps.create(newEntries: _*))
-//
-//  def newFrom(newEntries: scala.collection.Map[String, Any]) =
-//    createWithNewMap(MutableMaps.create(newEntries))
-//
-//  def newWith(newEntry: (String, Any)) =
-//    createWithNewMap(MutableMaps.create(this.m) += newEntry)
-//
-//  override def clone(): ExecutionContext = newFrom(m)
-//
-//  protected def createWithNewMap(newMap: MutableMap[String, Any]) = {
-//    copy(m = newMap)
-//  }
-//}
-//

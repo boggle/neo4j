@@ -40,9 +40,9 @@ class ColumnFilterPipe(source: Pipe, val returnItems: Seq[ReturnItem])
       val result = ExecutionContext.empty(numItems)
 
       returnItems.foreach {
-        case ReturnItem(Identifier(oldName), newName, _) if isNamed(newName) => result(newName) = ctx(oldName)
-        case ReturnItem(CachedExpression(oldName, _), newName, _)            => result(newName) = ctx(oldName)
-        case ReturnItem(_, name, _)                                          => result(name) = ctx(name)
+        case ReturnItem(Identifier(oldName), newName, _) if isNamed(newName) => result(NamedSlot(newName)) = ctx(NamedSlot(oldName))
+        case ReturnItem(CachedExpression(oldName, _), newName, _)            => result(NamedSlot(newName)) = ctx(NamedSlot(oldName))
+        case ReturnItem(_, name, _)                                          => result(NamedSlot(name)) = ctx(NamedSlot(name))
       }
 
       result

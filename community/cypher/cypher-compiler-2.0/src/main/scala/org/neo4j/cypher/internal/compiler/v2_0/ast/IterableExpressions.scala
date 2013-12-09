@@ -182,28 +182,28 @@ sealed trait IterablePredicateExpression extends FilteringExpression {
 case class AllIterablePredicate(identifier: Identifier, expression: Expression, innerPredicate: Option[Expression], token: InputToken) extends IterablePredicateExpression {
   val name = "all"
   def toPredicate(command: CommandExpression, name: String, inner: commands.Predicate) = {
-    commands.AllInCollection(command, identifier.name, inner)
+    commands.AllInCollection(command, NamedSlot(identifier.name), inner)
   }
 }
 
 case class AnyIterablePredicate(identifier: Identifier, expression: Expression, innerPredicate: Option[Expression], token: InputToken) extends IterablePredicateExpression {
   val name = "any"
   def toPredicate(command: CommandExpression, name: String, inner: commands.Predicate) = {
-    commands.AnyInCollection(command, identifier.name, inner)
+    commands.AnyInCollection(command, NamedSlot(identifier.name), inner)
   }
 }
 
 case class NoneIterablePredicate(identifier: Identifier, expression: Expression, innerPredicate: Option[Expression], token: InputToken) extends IterablePredicateExpression {
   val name = "none"
   def toPredicate(command: CommandExpression, name: String, inner: commands.Predicate) = {
-    commands.NoneInCollection(command, identifier.name, inner)
+    commands.NoneInCollection(command, NamedSlot(identifier.name), inner)
   }
 }
 
 case class SingleIterablePredicate(identifier: Identifier, expression: Expression, innerPredicate: Option[Expression], token: InputToken) extends IterablePredicateExpression {
   val name = "single"
   def toPredicate(command: CommandExpression, name: String, inner: commands.Predicate) = {
-    commands.SingleInCollection(command, identifier.name, inner)
+    commands.SingleInCollection(command, NamedSlot(identifier.name), inner)
   }
 }
 

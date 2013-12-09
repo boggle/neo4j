@@ -29,12 +29,12 @@ import collection.JavaConverters._
 case class NamedPathPipe(source: Pipe, pathName: String, entities: Seq[AbstractPattern]) extends PipeWithSource(source) {
   protected def internalCreateResults(input: Iterator[ExecutionContext], state: QueryState) =
     input.map {
-      ctx => ctx(pathName) = getPath(ctx)
+      ctx => ctx(NamedSlot(pathName)) = getPath(ctx)
     }
 
   // TODO: This is duplicated with PathExtractor
   private def getPath(ctx: ExecutionContext): Path = {
-    def get(x: String): PropertyContainer = ctx(x).asInstanceOf[PropertyContainer]
+    def get(x: String): PropertyContainer = ctx(NamedSlot(x)).asInstanceOf[PropertyContainer]
 
     val p: Seq[PropertyContainer] = entities.foldLeft(get(firstNode) :: Nil)((soFar, p) => p match {
       case e: ParsedEntity           => soFar
@@ -56,7 +56,7 @@ case class NamedPathPipe(source: Pipe, pathName: String, entities: Seq[AbstractP
 
   //WARNING: This method can return NULL
   private def getPath(m: ExecutionContext, key: String, soFar: List[PropertyContainer]): List[PropertyContainer] = {
-    val m1 = m(key)
+    val m1 = m(NamedSlot(key))
 
     if (m1 == null)
       return List(null)

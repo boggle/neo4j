@@ -39,7 +39,10 @@ class TraversalMatchPipe(source: Pipe, matcher: TraversalMatcher, trail: Trail) 
             // TODO map different path implementations better to a list aka path.toList            
             val seq = path.iterator().asScala.toStream
             // TODO change decompose to work with execution context directly
-            trail.decompose(seq).map(m => ctx.copy().update(m))
+            trail.decompose(seq).map { (m: Map[String, Any]) =>
+              val slotMap: Map[Slot, Any] = m.map { pair => (NamedSlot(pair._1), pair._2) }
+              ctx.copy().update(slotMap)
+            }
         }
     }
   }

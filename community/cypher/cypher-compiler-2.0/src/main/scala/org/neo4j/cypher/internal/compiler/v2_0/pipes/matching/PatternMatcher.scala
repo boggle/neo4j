@@ -47,7 +47,7 @@ class PatternMatcher(bindings: Map[String, MatchingPair],
   def createInitialHistory: InitialHistory = {
 
     val relationshipsInContextButNotInPattern = source.collect {
-      case (key, r: Relationship) if interestingRelationshipIdentifiers(key) => r
+      case (key, r: Relationship) if interestingRelationshipIdentifiers(key.name) => r
     }
 
     new InitialHistory(source, relationshipsInContextButNotInPattern)
@@ -175,7 +175,8 @@ class PatternMatcher(bindings: Map[String, MatchingPair],
 
   private def isMatchSoFar(history: History): Boolean = {
     val m = history.toMap
-    val predicate = predicates.filter(predicate=> !predicate.containsIsNull && predicate.symbolTableDependencies.forall(m contains))
+    val predicate = predicates.filter(predicate=>
+      !predicate.containsIsNull && predicate.symbolTableDependencies.forall(x => m.contains(NamedSlot(x))))
     predicate.forall(_.isTrue(m)(state))
   }
 

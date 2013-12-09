@@ -22,7 +22,6 @@ package org.neo4j.cypher.internal.compiler.v2_0.pipes
 import matching.{PatternGraph, MatchingContext}
 import org.neo4j.cypher.internal.compiler.v2_0._
 import commands._
-import symbols._
 
 case class MatchPipe(source: Pipe,
                      predicates: Seq[Predicate],
@@ -35,7 +34,7 @@ case class MatchPipe(source: Pipe,
   protected def internalCreateResults(input: Iterator[ExecutionContext], state: QueryState) = {
     input.flatMap {
       ctx =>
-        if (identifiersBoundInSource.exists(i => ctx(i) == null))
+        if (identifiersBoundInSource.exists(i => ctx(NamedSlot(i)) == null))
           None
         else
           matchingContext.getMatches(ctx, state)

@@ -35,7 +35,7 @@ class DistinctPipe(source: Pipe, expressions: Map[String, Expression]) extends P
     val returnExpressions = input.map(ctx => {
       val result = ExecutionContext.empty(expressions.size)
       expressions.foreach {
-        case (k, v) => result(k) = v(ctx)(state)
+        case (k, v) => result(NamedSlot(k)) = v(ctx)(state)
       }
       result
     })
@@ -48,7 +48,7 @@ class DistinctPipe(source: Pipe, expressions: Map[String, Expression]) extends P
 
     returnExpressions.filter {
        case ctx =>
-         val values = new NiceHasher(keyNames.map(ctx.apply).toSeq)
+         val values = new NiceHasher(keyNames.map(name => ctx.apply(NamedSlot(name))).toSeq)
 
          if (seen.contains(values)) {
            false

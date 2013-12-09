@@ -101,7 +101,7 @@ case class CreateUniqueAction(incomingLinks: UniqueLink*) extends UpdateAction {
       fail(nextSteps)
     } else {
       val newContext = oldContext.copy()
-      uniqueKeys foreach { newContext.update }
+      uniqueKeys foreach { (x: (String, PropertyContainer)) => newContext.update(NamedSlot(x._1), x._2) }
       newContext
     }
   }
@@ -188,6 +188,6 @@ case class Traverse(result: (String, PropertyContainer)*) extends CreateUniqueRe
 case class Update(cmds: Seq[UpdateWrapper]) extends CreateUniqueResult
 
 case class UpdateWrapper(needs: Seq[String], cmd: UpdateAction, key: String) {
-  def canRun(context: ExecutionContext) = context.containsAll(needs)
+  def canRun(context: ExecutionContext) = context.containsAll(needs.map(NamedSlot(_)))
 }
 

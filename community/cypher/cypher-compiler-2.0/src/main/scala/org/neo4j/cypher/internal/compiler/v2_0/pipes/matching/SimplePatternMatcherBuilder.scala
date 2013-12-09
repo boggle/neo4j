@@ -67,14 +67,14 @@ class SimplePatternMatcherBuilder(pattern: PatternGraph,
     val patternNodes = createPatternNodes
     val patternRels = createPatternRels(patternNodes)
     patternNodes.values.foreach(pn => {
-      sourceRow.get(pn.getLabel) match {
+      sourceRow.get(NamedSlot(pn.getLabel)) match {
         case Some(node: Node) => pn.setAssociation(node)
         case _                => pn.setAssociation(null)
       }
     })
 
     patternRels.values.foreach(pr => {
-      sourceRow.get(pr.getLabel) match {
+      sourceRow.get(NamedSlot(pr.getLabel)) match {
         case Some(rel: Relationship) => pr.setAssociation(rel)
         case _                       => pr.setAssociation(null)
       }
@@ -89,7 +89,7 @@ class SimplePatternMatcherBuilder(pattern: PatternGraph,
     val startPoint = patternNodes.values.find(_.getAssociation != null).get
 
     val incomingRels: Set[Relationship] = ctx.collect {
-      case (k, r: Relationship) if identifiersInClause.contains(k) => r
+      case (k, r: Relationship) if identifiersInClause.contains(k.name) => r
     }.toSet
 
     val boundRels = patternRels.values.collect {
@@ -111,10 +111,10 @@ class SimplePatternMatcherBuilder(pattern: PatternGraph,
         val result: ExecutionContext = ctx.copy()
 
         patternNodes.foreach {
-          case (key, pn) => result(key) = patternMatch.getNodeFor(pn)
+          case (key, pn) => result(NamedSlot(key)) = patternMatch.getNodeFor(pn)
         }
         patternRels.foreach {
-          case (key, pr) => result(key) = patternMatch.getRelationshipFor(pr)
+          case (key, pr) => result(NamedSlot(key)) = patternMatch.getRelationshipFor(pr)
         }
 
         Some(result).filter(r => validPredicates.forall(_.isTrue(r)(state)))

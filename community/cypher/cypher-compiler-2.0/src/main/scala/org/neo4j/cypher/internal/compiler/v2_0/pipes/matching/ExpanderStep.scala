@@ -22,12 +22,12 @@ package org.neo4j.cypher.internal.compiler.v2_0.pipes.matching
 import org.neo4j.cypher.internal.compiler.v2_0._
 import commands._
 import commands.expressions.Expression
-import pipes.{MutableMaps, QueryState}
+import pipes.QueryState
 import symbols._
 import org.neo4j.cypher.EntityNotFoundException
 import org.neo4j.graphdb._
 import org.neo4j.helpers.ThisShouldNotHappenError
-import collection.mutable
+import scala.collection.mutable
 import collection.mutable.{Map => MutableMap}
 
 trait ExpanderStep {
@@ -150,7 +150,7 @@ case class RelationshipIdentifier() extends MiniMapIdentifier() {
   protected def extract(m: MiniMap) = m.relationship
 }
 
-class MiniMap(var relationship: Relationship, var node: Node, myMap: MutableMap[String, Any] = MutableMaps.empty)
+class MiniMap(var relationship: Relationship, var node: Node, myMap: MutableMap[Slot, Any] = new mutable.OpenHashMap())
   extends MapExecutionContext(myMap) {
 
   override def copy() = new MiniMap(relationship, node)
