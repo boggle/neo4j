@@ -1,7 +1,16 @@
-package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api;
+package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot;
 
-public enum SlotType {
-//    INT,
+public enum SlotType
+{
+    INT {
+        @Override
+        public SlotType join(SlotType other) {
+            switch (other) {
+                case INT: return INT;
+                default: return ANY;
+            }
+        }
+    },
 //    LONG,
 //    DOUBLE,
 //    STRING,
@@ -9,7 +18,7 @@ public enum SlotType {
     ANY {
         @Override
         public SlotType join( SlotType other ) {
-            return null;
+            return ANY;
         }
     };
 
