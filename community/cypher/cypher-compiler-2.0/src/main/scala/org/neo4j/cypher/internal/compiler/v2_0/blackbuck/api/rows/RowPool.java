@@ -4,5 +4,5 @@ import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor;
 
 public interface RowPool<C extends Cursor<C>>
 {
-    C newCursor( Object key );
+    C newCursor();
 }
