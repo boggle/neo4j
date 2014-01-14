@@ -1,8 +1,9 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.sched;
 
-import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Pos;
 
-public interface Activation<C extends Cursor<C>>
+public interface Activation<P extends Pos<P>, C extends Cursor<P, C>, E>
 {
-    void activate( Router<C> router, Event<C> event );
+    void activate( Router<P, C, E> router, Event<?> event );
 }

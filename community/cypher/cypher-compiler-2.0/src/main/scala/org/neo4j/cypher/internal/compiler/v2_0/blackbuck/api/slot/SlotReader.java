@@ -1,10 +1,12 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot;
 
-public interface SlotReader<C extends Cursor<C>> extends TypedSlot<C>
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.Cursor;
+
+public interface SlotReader<P extends Pos<P>> extends TypedSlot<P>
 {
-    boolean isNull( C cursor );
-    Object value( C cursor );
-    int intValue( C cursor );
+    boolean isNull( P pos );
+    Object value( P pos );
+    int intValue( P pos );
 
 //    long longValue(int row);
 //    double floatValue(int row);

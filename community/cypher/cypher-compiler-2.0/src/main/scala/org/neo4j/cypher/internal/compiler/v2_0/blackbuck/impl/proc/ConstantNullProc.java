@@ -1,21 +1,22 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.impl.proc;
 
-import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Pos;
 import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.SlotWriter;
 
-public class ConstantNullProc<C extends Cursor<C>> extends DefaultProc<C>
+public class ConstantNullProc<P extends Pos<P>> extends DefaultProc<P>
 {
-    private final SlotWriter<C> dst;
+    private final SlotWriter<P> dst;
 
-    public ConstantNullProc( SlotWriter<C> dst )
+    public ConstantNullProc( SlotWriter<P> dst )
     {
         super( "ConstantNull", dst );
         this.dst = dst;
     }
 
     @Override
-    public void run( C cursor )
+    public void run( P pos )
     {
-        dst.setNull( cursor );
+        dst.setNull( pos );
     }
 }

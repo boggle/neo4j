@@ -1,25 +1,36 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.impl.sched;
 
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.RowPool;
 import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.sched.Activation;
 import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.sched.Event;
-import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Pos;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-public class DefaultScheduler<C extends Cursor<C>> extends AbstractScheduler<C>
+public class DefaultScheduler<P extends Pos<P>, C extends Cursor<P, C>, E> extends AbstractScheduler<P, C, E>
 {
+    private final E environment;
     private final Deque<Event<C>> events;
+    private final RowPool<P, C> pool;
     private int numActivations = 0;
 
-    public DefaultScheduler()
+    public DefaultScheduler( E environment, RowPool<P, C> pool )
     {
-        events = new ArrayDeque<>();
+        this( environment, pool, new ArrayDeque<Event<C>>() );
     }
 
-    public DefaultScheduler( int eventQueueSizeHint )
+    public DefaultScheduler( E environment, RowPool<P, C> pool, int eventQueueSizeHint )
     {
-        events = new ArrayDeque<>( eventQueueSizeHint );
+        this( environment, pool, new ArrayDeque<Event<C>>( eventQueueSizeHint ) );
+    }
+
+    private DefaultScheduler( E environment, RowPool<P, C> pool, Deque<Event<C>> events )
+    {
+        this.environment = environment;
+        this.events = events;
+        this.pool = pool;
     }
 
     @Override
@@ -33,6 +44,16 @@ public class DefaultScheduler<C extends Cursor<C>> extends AbstractScheduler<C>
         {
             events.addFirst( event );
         }
+    }
+
+    @Override
+    protected RowPool<P, C> pool() {
+        return pool;
+    }
+
+    @Override
+    public E environment() {
+        return environment;
     }
 
     public int numActivations()
@@ -50,7 +71,7 @@ public class DefaultScheduler<C extends Cursor<C>> extends AbstractScheduler<C>
                 return event;
             }
 
-            Activation<C> activation = lookup(event.destination());
+            Activation<P, C, E> activation = lookup( event.destination() );
             if ( null == activation )
             {
 

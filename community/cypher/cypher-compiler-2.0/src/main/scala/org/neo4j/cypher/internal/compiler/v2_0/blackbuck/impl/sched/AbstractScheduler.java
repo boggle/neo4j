@@ -1,17 +1,26 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.impl.sched;
 
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.RowPool;
 import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.sched.Activation;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.sched.Operator;
 import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.sched.Scheduler;
-import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Pos;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class AbstractScheduler<C extends Cursor<C>> implements Scheduler<C>
+public abstract class AbstractScheduler<P extends Pos<P>, C extends Cursor<P, C>, E> implements Scheduler<P, C, E>
 {
-    private final Map<Object, Activation<C>> registry = new HashMap<Object, Activation<C>>();
+    private final Map<Object, Activation<P, C, E>> registry = new HashMap<Object, Activation<P, C, E>>();
 
-    public void register( Object key, Activation<C> activation )
+    @Override
+    public void install( Operator<P, C, E> operator )
+    {
+        register( operator.key(), operator.newActivation( pool(), this ) );
+    }
+
+    public void register( Object key, Activation<P, C, E> activation )
     {
         if ( registry.containsKey( key ) )
         {
@@ -21,9 +30,9 @@ public abstract class AbstractScheduler<C extends Cursor<C>> implements Schedule
         registry.put( key, activation );
     }
 
-    public void replace( Object key, Activation<C> oldActivation, Activation<C> newActivation )
+    public void replace( Object key, Activation<P, C, E> oldActivation, Activation<P, C, E> newActivation )
     {
-        Activation<C> currentActivation = registry.get( key );
+        Activation<P, C, E> currentActivation = registry.get( key );
         if ( currentActivation != oldActivation )
         {
             throw new IllegalStateException( "Cannot replace different activation for: " + key );
@@ -31,7 +40,7 @@ public abstract class AbstractScheduler<C extends Cursor<C>> implements Schedule
         registry.put( key, newActivation );
     }
 
-    public void unRegister( Object key ) {
+    public void unRegister( Object key, Activation<P, C, E> activation ) {
         if ( ! registry.containsKey( key ) )
         {
             throw new IllegalStateException( "There is no activation for: " + key );
@@ -45,8 +54,10 @@ public abstract class AbstractScheduler<C extends Cursor<C>> implements Schedule
         return null != lookup( key );
     }
 
-    protected Activation<C> lookup( Object key )
+    protected Activation<P, C, E> lookup( Object key )
     {
         return registry.get( key );
     }
+
+    protected abstract RowPool<P, C> pool();
 }

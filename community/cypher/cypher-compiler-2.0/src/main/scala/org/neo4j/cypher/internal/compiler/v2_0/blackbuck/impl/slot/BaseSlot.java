@@ -1,24 +1,24 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.impl.slot;
 
-import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Pos;
 import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Slot;
 
-abstract class BaseSlot<C extends Cursor<C>> extends BaseSlotReader<C> implements Slot<C>
+abstract class BaseSlot<P extends Pos<P>> extends BaseSlotReader<P> implements Slot<P>
 {
     @Override
-    public void setNull( C cursor)
+    public void setNull( P pos)
     {
         throw unsupportedOperationException();
     }
 
     @Override
-    public void setValue( C cursor, Object value)
+    public void setValue( P pos, Object value)
     {
         throw unsupportedOperationException();
     }
 
     @Override
-    public void setIntValue( C cursor, int value ) {
+    public void setIntValue( P pos, int value ) {
         throw unsupportedOperationException();
     }
 }

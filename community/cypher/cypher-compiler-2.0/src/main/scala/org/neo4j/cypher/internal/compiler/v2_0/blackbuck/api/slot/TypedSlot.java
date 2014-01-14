@@ -1,6 +1,8 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot;
 
-public interface TypedSlot<C extends Cursor<C>>
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.Cursor;
+
+public interface TypedSlot<P extends Pos<P>>
 {
     SlotType type();
 }

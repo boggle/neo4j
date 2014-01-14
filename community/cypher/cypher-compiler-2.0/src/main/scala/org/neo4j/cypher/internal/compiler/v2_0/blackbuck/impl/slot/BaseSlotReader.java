@@ -1,24 +1,24 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.impl.slot;
 
-import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor;
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Pos;
 import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.SlotReader;
 
-abstract class BaseSlotReader<C extends Cursor<C>> implements SlotReader<C>
+abstract class BaseSlotReader<P extends Pos<P>> implements SlotReader<P>
 {
     @Override
-    public boolean isNull( C cursor )
+    public boolean isNull( P pos )
     {
         throw unsupportedOperationException();
     }
 
     @Override
-    public Object value( C cursor )
+    public Object value( P pos )
     {
         throw unsupportedOperationException();
     }
 
     @Override
-    public int intValue( C cursor )
+    public int intValue( P pos )
     {
         throw unsupportedOperationException();
     }
@@ -28,9 +28,9 @@ abstract class BaseSlotReader<C extends Cursor<C>> implements SlotReader<C>
         return new UnsupportedOperationException( "This slot does not support this operation." );
     }
 
-    protected void assertNotNull( C cursor )
+    protected void assertNotNull( P pos )
     {
-        if ( isNull( cursor ) )
+        if ( isNull( pos ) )
         {
             throw new IllegalStateException("Cannot retrieve value from null slot");
         }

@@ -1,18 +1,18 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.sched;
 
-import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor;
-
-public final class Event<C extends Cursor<C>>
+public final class Event<D>
 {
     private final Object source;
     private final Object destination;
-    private final C cursor;
+    private final D payload;
+    private final boolean last;
 
-    private Event( Object source, Object destination, C cursor )
+    private Event( Object source, Object destination, D payload, boolean last )
     {
         this.source = source;
         this.destination = destination;
-        this.cursor = cursor;
+        this.payload = payload;
+        this.last = last;
     }
 
     public boolean isInput()
@@ -35,8 +35,9 @@ public final class Event<C extends Cursor<C>>
         return key == destination;
     }
 
-    public boolean isLast() {
-        return cursor.isLastChunk();
+    public boolean isLast()
+    {
+        return last;
     }
 
     public Object source()
@@ -49,23 +50,23 @@ public final class Event<C extends Cursor<C>>
         return destination;
     }
 
-    public C cursor()
+    public D payload()
     {
-        return cursor;
+        return payload;
     }
 
-    public static <C extends Cursor<C>> Event<C> message( Object source, Object destination, C cursor )
+    public static <D> Event<D> message( Object source, Object destination, D payload, boolean last )
     {
-        return new Event<>( source, destination, cursor );
+        return new Event<D>( source, destination, payload, last );
     }
 
-    public static <C extends Cursor<C>> Event<C> inputTo( Object destination, C cursor )
+    public static <D> Event<D> inputTo( Object destination, D payload, boolean last )
     {
-        return message( null, destination, cursor );
+        return message( null, destination, payload, last );
     }
 
-    public static <C extends Cursor<C>> Event<C> outputFrom( Object source, C cursor )
+    public static <D> Event<D> outputFrom( Object source, D payload, boolean last )
     {
-        return message( source, null, cursor );
+        return message( source, null, payload, last );
     }
 }

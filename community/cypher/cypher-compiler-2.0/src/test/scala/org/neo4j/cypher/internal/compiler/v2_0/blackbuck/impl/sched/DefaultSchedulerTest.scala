@@ -1,9 +1,9 @@
 package org.neo4j.cypher.internal.compiler.v2_0.blackbuck.impl.sched
 
 import org.scalatest.{Matchers, BeforeAndAfter, FunSuite}
-import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.slot.Cursor
 import org.mockito.Mockito
 import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.sched.{Router, Activation, Event}
+import org.neo4j.cypher.internal.compiler.v2_0.blackbuck.api.rows.Cursor
 
 class DefaultSchedulerTest extends FunSuite with Matchers with BeforeAndAfter {
 
