@@ -37,15 +37,4 @@ public final class EntityRegister implements Register
     {
         setEntity( (long) value );
     }
-
-    public void updateFrom( EntityRegister entityRegister )
-    {
-        entity = entityRegister.entity;
-    }
-
-    @Override
-    public EntityRegister copy()
-    {
-        return new EntityRegister( entity );
-    }
 }

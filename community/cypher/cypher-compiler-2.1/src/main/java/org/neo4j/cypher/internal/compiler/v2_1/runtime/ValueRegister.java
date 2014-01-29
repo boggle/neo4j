@@ -25,15 +25,4 @@ public final class ValueRegister implements Register
     {
         this.value = value;
     }
-
-    public void updateFrom( ValueRegister valueRegister )
-    {
-        value = valueRegister.value;
-    }
-
-    @Override
-    public ValueRegister copy()
-    {
-        return new ValueRegister( value );
-    }
 }

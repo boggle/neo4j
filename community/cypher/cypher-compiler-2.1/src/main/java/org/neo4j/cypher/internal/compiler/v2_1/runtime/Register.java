@@ -23,6 +23,4 @@ public interface Register
 {
     Object getValue();
     void setValue( Object value );
-
-    Register copy();
 }

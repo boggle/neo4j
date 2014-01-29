@@ -1,8 +1,11 @@
 package org.neo4j.cypher.internal.compiler.v2_1.runtime;
 
-public class DirectRegisters implements Registers
+public final class DirectRegisters implements Registers
 {
     public static final RegisterFactory FACTORY = new Factory();
+
+    private static final ValueRegister[] NO_VALUES = new ValueRegister[0];
+    private static final EntityRegister[] NO_ENTITIES = new EntityRegister[0];
 
     private final RegisterSignature signature;
 
@@ -12,16 +15,32 @@ public class DirectRegisters implements Registers
     public DirectRegisters( RegisterSignature signature )
     {
         this.signature = signature;
-        this.valueRegisters = new ValueRegister[signature.valueRegisters()];
-        for ( int i = 0; i < this.valueRegisters.length; i++ )
+        int numValues = signature.valueRegisters();
+        if ( numValues > 0 )
         {
-            this.valueRegisters[i] = new ValueRegister();
+            this.valueRegisters = new ValueRegister[numValues];
+            for ( int i = 0; i < numValues; i++ )
+            {
+                this.valueRegisters[i] = new ValueRegister();
+            }
+        }
+        else
+        {
+            this.valueRegisters = NO_VALUES;
         }
 
-        this.entityRegisters = new EntityRegister[signature.entityRegisters()];
-        for ( int i = 0; i < this.entityRegisters.length; i++ )
+        int numEntities = signature.entityRegisters();
+        if ( numEntities > 0 )
         {
-            this.entityRegisters[i] = new EntityRegister();
+            this.entityRegisters = new EntityRegister[numEntities];
+            for ( int i = 0; i < numEntities; i++ )
+            {
+                this.entityRegisters[i] = new EntityRegister();
+            }
+        }
+        else
+        {
+            this.entityRegisters = NO_ENTITIES;
         }
     }
 
@@ -34,40 +53,6 @@ public class DirectRegisters implements Registers
 
         this.valueRegisters = valueRegisters;
         this.entityRegisters = entityRegisters;
-    }
-
-    public DirectRegisters( DirectRegisters original )
-    {
-        this.signature = original.signature;
-        this.valueRegisters = new ValueRegister[signature.valueRegisters()];
-        for ( int i = 0; i < this.valueRegisters.length; i++ )
-        {
-            this.valueRegisters[i] = original.valueRegisters[i].copy();
-        }
-
-        this.entityRegisters = new EntityRegister[signature.entityRegisters()];
-        for ( int i = 0; i < this.entityRegisters.length; i++ )
-        {
-            this.entityRegisters[i] = original.entityRegisters[i].copy();
-        }
-    }
-
-    @Override
-    public void updateFrom( Registers registers )
-    {
-        RegisterSignature fromSignature = registers.signature();
-
-        int fromValues = fromSignature.valueRegisters();
-        for ( int i = 0; i < fromValues; i++ )
-        {
-            valueRegisters[i].updateFrom( registers.valueRegister( i ) );
-        }
-
-        int fromEntities = fromSignature.entityRegisters();
-        for ( int i = 0; i < fromEntities; i++ )
-        {
-            entityRegisters[i].updateFrom( registers.entityRegister( i ) );
-        }
     }
 
     @Override
@@ -92,12 +77,6 @@ public class DirectRegisters implements Registers
     public EntityRegister entityRegister( int idx )
     {
         return entityRegisters[idx];
-    }
-
-    @Override
-    public Registers copy()
-    {
-        return new DirectRegisters( this );
     }
 
     private static final class Factory implements RegisterFactory

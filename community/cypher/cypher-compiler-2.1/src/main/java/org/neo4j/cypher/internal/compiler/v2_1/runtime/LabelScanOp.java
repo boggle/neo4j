@@ -29,7 +29,7 @@ public class LabelScanOp implements Operator
     public LabelScanOp( StatementContext ctx, int labelToken, EntityRegister nodeRegister )
     {
         this.nodeRegister = nodeRegister;
-        nodes = ctx.read().nodesGetForLabel( labelToken );
+        this.nodes = ctx.read().nodesGetForLabel( labelToken );
     }
 
     @Override

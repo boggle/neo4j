@@ -21,8 +21,6 @@ package org.neo4j.cypher.internal.compiler.v2_1.runtime;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 public class HashJoinOp implements Operator {
@@ -31,9 +29,9 @@ public class HashJoinOp implements Operator {
     private final Registers lhsTail;
     private final Operator lhs;
     private final Operator rhs;
-    private final Map<Long, ArrayList<Registers>> bucket = new HashMap<>();
+    private final Map<Long, ArrayList<RegisterSnapshot>> bucket = new HashMap<>();
     private int bucketPos = 0;
-    private ArrayList<Registers> currentBucketEntry = null;
+    private ArrayList<RegisterSnapshot> currentBucketEntry = null;
 
     public HashJoinOp(StatementContext ctx,
                       EntityRegister joinNode,
@@ -93,15 +91,15 @@ public class HashJoinOp implements Operator {
         while (lhs.next())
         {
             long key = joinRegister.getEntity();
-            List<Registers> objects = getTailEntriesForId(key);
-            Registers tailEntry = copyToTailEntry();
+            ArrayList<RegisterSnapshot> objects = getTailEntriesForId(key);
+            RegisterSnapshot tailEntry = copyToTailEntry();
             objects.add(tailEntry);
         }
     }
 
-    private List<Registers> getTailEntriesForId(long key)
+    private ArrayList<RegisterSnapshot> getTailEntriesForId(long key)
     {
-        ArrayList<Registers> objects = bucket.get(key);
+        ArrayList<RegisterSnapshot> objects = bucket.get(key);
         if (objects == null) {
             objects = new ArrayList<>();
             bucket.put(key, objects);
@@ -111,13 +109,12 @@ public class HashJoinOp implements Operator {
 
     private void restoreFromTailEntry() {
         int idx = bucketPos++;
-        Registers from = currentBucketEntry.get(idx);
-
-        lhsTail.updateFrom( from );
+        RegisterSnapshot from = currentBucketEntry.get(idx);
+        from.restore( lhsTail );
     }
 
-    private Registers copyToTailEntry()
+    private RegisterSnapshot copyToTailEntry()
     {
-        return lhsTail.copy();
+        return new RegisterSnapshot( lhsTail );
     }
 }

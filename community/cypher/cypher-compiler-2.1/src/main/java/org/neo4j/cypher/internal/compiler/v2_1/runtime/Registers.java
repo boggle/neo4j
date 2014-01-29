@@ -19,13 +19,11 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_1.runtime;
 
-public interface Registers {
+public interface Registers
+{
     RegisterFactory factory();
     RegisterSignature signature();
 
     ValueRegister valueRegister( int idx );
     EntityRegister entityRegister( int idx );
-
-    void updateFrom( Registers registers );
-    Registers copy();
 }
