@@ -29,6 +29,7 @@ class OperatorTest extends ExecutionEngineHelper {
 
   var tx: Transaction = _
   var ctx: StatementContext = _
+  val registerFactory: RegisterFactory = DirectRegisters.FACTORY
 
   @Before def init() {
     tx = graph.beginTx()
@@ -52,8 +53,8 @@ class OperatorTest extends ExecutionEngineHelper {
       while (inner.next()) {
         val result = new mutable.HashMap[String, Any]()
         table.foreach {
-          case (name, Long(idx)) => result += name -> data.getEntityRegister(idx)
-          case (name, Object(idx)) => result += name -> data.getObjectRegister(idx)
+          case (name, Long(idx)) => result += name -> data.entityRegister(idx).getEntity
+          case (name, Object(idx)) => result += name -> data.valueRegister(idx).getValue
         }
         resultBuilder += result.toMap
       }
@@ -63,16 +64,16 @@ class OperatorTest extends ExecutionEngineHelper {
   }
 
   @Test def all_nodes_on_empty_database() {
-    val data = ArrayRegisters.FACTORY.createRegisters(new RegisterSignature().withEntityRegisters(1))
-    val e0 = new EntityRegister(data, 0)
+    val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(1))
+    val e0 = data.entityRegister(0)
     val allNodesScan = new AllNodesScanOp(ctx, e0)
     allNodesScan.open()
     assert(allNodesScan.next() === false, "Expected not to find any nodes")
   }
 
   @Test def all_nodes_on_database_with_three_nodes() {
-    val data = ArrayRegisters.FACTORY.createRegisters(new RegisterSignature().withEntityRegisters(1))
-    val e0 = new EntityRegister(data, 0)
+    val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(1))
+    val e0 = data.entityRegister(0)
     val allNodesScan = new AllNodesScanOp(ctx, e0)
 
     createNode()
@@ -85,8 +86,8 @@ class OperatorTest extends ExecutionEngineHelper {
   }
   
   @Test def labelScan() {
-    val data = ArrayRegisters.FACTORY.createRegisters(new RegisterSignature().withEntityRegisters(1))
-    val e0 = new EntityRegister(data, 0)
+    val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(1))
+    val e0 = data.entityRegister(0)
 
     val labelToken = 0
 
@@ -102,9 +103,9 @@ class OperatorTest extends ExecutionEngineHelper {
   }
 
   @Test def expand() {
-    val data = ArrayRegisters.FACTORY.createRegisters(new RegisterSignature().withEntityRegisters(2))
-    val e0 = new EntityRegister(data, 0)
-    val e1 = new EntityRegister(data, 1)
+    val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(2))
+    val e0 = data.entityRegister(0)
+    val e1 = data.entityRegister(1)
 
     val source = createLabeledNode("A")
     val destination = createNode()
@@ -122,10 +123,10 @@ class OperatorTest extends ExecutionEngineHelper {
 
 
   @Test def hash_join() {
-    val data = ArrayRegisters.FACTORY.createRegisters(new RegisterSignature().withEntityRegisters(3))
-    val e0 = new EntityRegister(data, 0)
-    val e1 = new EntityRegister(data, 1)
-    val e2 = new EntityRegister(data, 2)
+    val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(3))
+    val e0 = data.entityRegister(0)
+    val e1 = data.entityRegister(1)
+    val e2 = data.entityRegister(2)
 
     for (i <- 0.until(10)) {
       val middle = createLabeledNode("A", "B")
@@ -150,7 +151,8 @@ class OperatorTest extends ExecutionEngineHelper {
     val labelScan2 = new LabelScanOp(ctx, labelBToken, e2)
     val rhs = new ExpandToNodeOp(ctx, labelScan2, e2, Direction.OUTGOING, e0)
 
-    val hashJoin = new HashJoinOp(ctx, e0, Array(e1), Array.empty, lhs, rhs)
+    val lhsTail = new DirectRegisters( Array.empty, Array(e1) )
+    val hashJoin = new HashJoinOp(ctx, e0, lhsTail, lhs, rhs)
 
     implicit val table = Map("a" -> Long(0), "b" -> Long(1), "c" -> Long(2))
 
@@ -158,10 +160,10 @@ class OperatorTest extends ExecutionEngineHelper {
   }
 
   @Test def hash_join2() {
-    val data = ArrayRegisters.FACTORY.createRegisters(new RegisterSignature().withEntityRegisters(3))
-    val e0 = new EntityRegister(data, 0)
-    val e1 = new EntityRegister(data, 1)
-    val e2 = new EntityRegister(data, 2)
+    val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(3))
+    val e0 = data.entityRegister(0)
+    val e1 = data.entityRegister(1)
+    val e2 = data.entityRegister(2)
     val b = createNode()
     
     for(i <- 0 until 4) {
@@ -182,21 +184,22 @@ class OperatorTest extends ExecutionEngineHelper {
     val labelScan2 = new LabelScanOp(ctx, labelBToken, e2)
     val rhs = new ExpandToNodeOp(ctx, labelScan2, e2, Direction.OUTGOING, e0)
 
-    val hashJoin = new HashJoinOp(ctx, e0, Array(e1), Array.empty, lhs, rhs)
+    val lhsTail = new DirectRegisters( Array.empty, Array(e1) )
+    val hashJoin = new HashJoinOp(ctx, e0, lhsTail, lhs, rhs)
 
     implicit val table = Map("a" -> Long(0), "b" -> Long(1), "c" -> Long(2))
 
     assert(hashJoin.toList(data).size === 16)
   }
 
-  @Ignore
+  //@Ignore
   @Test def performance_of_expand() {
     val numTries = 100
     val skipTries = 20
 
-    val data = ArrayRegisters.FACTORY.createRegisters(new RegisterSignature().withEntityRegisters(2))
-    val e0 = new EntityRegister(data, 0)
-    val e1 = new EntityRegister(data, 1)
+    val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(2))
+    val e0 = data.entityRegister(0)
+    val e1 = data.entityRegister(1)
 
     for (i <- 0.until(10000)) {
       val source = createLabeledNode("A")

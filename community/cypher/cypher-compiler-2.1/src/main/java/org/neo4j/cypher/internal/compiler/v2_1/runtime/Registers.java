@@ -23,11 +23,9 @@ public interface Registers {
     RegisterFactory factory();
     RegisterSignature signature();
 
-    Object getObjectRegister( int idx );
-    void setObjectRegister( int idx, Object value );
+    ValueRegister valueRegister( int idx );
+    EntityRegister entityRegister( int idx );
 
-    long getEntityRegister( int idx );
-    void setEntityRegister( int idx, long value );
-
+    void updateFrom( Registers registers );
     Registers copy();
 }

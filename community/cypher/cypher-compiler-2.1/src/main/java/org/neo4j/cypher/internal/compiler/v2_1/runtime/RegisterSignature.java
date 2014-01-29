@@ -23,23 +23,25 @@ import static java.lang.String.format;
 
 public class RegisterSignature
 {
-    private final int objectRegisters;
+    private static final RegisterSignature EMPTY = new RegisterSignature();
+
+    private final int valueRegisters;
     private final int entityRegisters;
 
-    public RegisterSignature()
+    private RegisterSignature()
     {
         this( 0, 0 );
     }
 
-    public RegisterSignature( int objectRegisters, int entityRegisters )
+    public RegisterSignature( int valueRegisters, int entityRegisters )
     {
-        this.objectRegisters = ensurePositiveOrNull( "Number of object registers", objectRegisters );
+        this.valueRegisters = ensurePositiveOrNull( "Number of value registers", valueRegisters );
         this.entityRegisters = ensurePositiveOrNull( "Number of entity registers", entityRegisters );
     }
 
-    public int objectRegisters()
+    public int valueRegisters()
     {
-        return objectRegisters;
+        return valueRegisters;
     }
 
     public int entityRegisters()
@@ -47,14 +49,14 @@ public class RegisterSignature
         return entityRegisters;
     }
 
-    public RegisterSignature withObjectRegisters( int newObjectRegisters )
+    public RegisterSignature withValueRegisters( int newValueRegisters )
     {
-        return new RegisterSignature( newObjectRegisters, entityRegisters );
+        return new RegisterSignature( newValueRegisters, entityRegisters );
     }
 
     public RegisterSignature withEntityRegisters( int newEntityRegisters )
     {
-        return new RegisterSignature( objectRegisters, newEntityRegisters );
+        return new RegisterSignature( valueRegisters, newEntityRegisters );
     }
 
     private int ensurePositiveOrNull( String what, int number )
@@ -64,5 +66,20 @@ public class RegisterSignature
             throw new IllegalArgumentException( format( "%s expected to be >= 0, but is: %d", what, number ) );
         }
         return number;
+    }
+
+    public static RegisterSignature empty()
+    {
+        return EMPTY;
+    }
+
+    public static RegisterSignature newWithValueRegisters( int newValueRegisters )
+    {
+        return EMPTY.withValueRegisters( newValueRegisters );
+    }
+
+    public static RegisterSignature newWithEntityRegisters( int newEntityRegisters )
+    {
+        return EMPTY.withEntityRegisters( newEntityRegisters );
     }
 }

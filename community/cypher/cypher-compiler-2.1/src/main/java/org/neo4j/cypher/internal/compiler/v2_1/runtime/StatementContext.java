@@ -44,7 +44,7 @@ public class StatementContext
 
     public StatementContext( Statement statement, GraphDatabaseService graph )
     {
-        this( statement, graph, ArrayRegisters.FACTORY );
+        this( statement, graph, DirectRegisters.FACTORY );
     }
 
     public ReadOperations read()

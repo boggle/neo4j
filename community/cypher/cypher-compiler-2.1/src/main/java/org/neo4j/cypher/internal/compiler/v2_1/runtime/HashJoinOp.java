@@ -19,6 +19,7 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_1.runtime;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -26,26 +27,23 @@ import java.util.Map;
 
 public class HashJoinOp implements Operator {
     private final StatementContext ctx;
-    private EntityRegister joinRegister;
-    private EntityRegister[] lhsTailEntityRegister;
-    private ObjectRegister[] lhsTailObjectRegister;
+    private final EntityRegister joinRegister;
+    private final Registers lhsTail;
     private final Operator lhs;
     private final Operator rhs;
-    private final Map<Long, List<Registers>> bucket = new HashMap<>();
+    private final Map<Long, ArrayList<Registers>> bucket = new HashMap<>();
     private int bucketPos = 0;
-    private List<Registers> currentBucketEntry = null;
+    private ArrayList<Registers> currentBucketEntry = null;
 
     public HashJoinOp(StatementContext ctx,
                       EntityRegister joinNode,
-                      EntityRegister[] lhsTailEntityRegisters,
-                      ObjectRegister[] lhsTailObjectRegisters,
+                      Registers lhsTail,
                       Operator lhs,
                       Operator rhs)
     {
         this.ctx = ctx;
         this.joinRegister = joinNode;
-        this.lhsTailEntityRegister = lhsTailEntityRegisters;
-        this.lhsTailObjectRegister = lhsTailObjectRegisters;
+        this.lhsTail = lhsTail;
 
         this.lhs = lhs;
         this.rhs = rhs;
@@ -103,9 +101,9 @@ public class HashJoinOp implements Operator {
 
     private List<Registers> getTailEntriesForId(long key)
     {
-        List<Registers> objects = bucket.get(key);
+        ArrayList<Registers> objects = bucket.get(key);
         if (objects == null) {
-            objects = new LinkedList<>();
+            objects = new ArrayList<>();
             bucket.put(key, objects);
         }
         return objects;
@@ -115,32 +113,11 @@ public class HashJoinOp implements Operator {
         int idx = bucketPos++;
         Registers from = currentBucketEntry.get(idx);
 
-        for (int i = 0; i < lhsTailEntityRegister.length; i++)
-        {
-            lhsTailEntityRegister[i].copyFrom( from );
-        }
-
-        for (int i = 0; i < lhsTailObjectRegister.length; i++)
-        {
-            lhsTailObjectRegister[i].copyFrom( from );
-        }
+        lhsTail.updateFrom( from );
     }
 
     private Registers copyToTailEntry()
     {
-        // TODO: Make configurable / avoid allocation
-        Registers tailEntry = new MapRegisters();
-
-        for (int i = 0; i < lhsTailEntityRegister.length; i++)
-        {
-            lhsTailEntityRegister[i].copyTo( tailEntry );
-        }
-
-        for (int i = 0; i < lhsTailObjectRegister.length; i++)
-        {
-            lhsTailObjectRegister[i].copyTo( tailEntry );
-        }
-
-        return tailEntry;
+        return lhsTail.copy();
     }
 }

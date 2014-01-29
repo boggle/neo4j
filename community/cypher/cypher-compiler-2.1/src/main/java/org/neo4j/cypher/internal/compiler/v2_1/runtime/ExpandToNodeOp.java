@@ -32,8 +32,9 @@ public class ExpandToNodeOp implements Operator
     private final EntityRegister destinationNode;
     private PrimitiveLongIterator currentNodes;
 
-    public ExpandToNodeOp( StatementContext ctx, Operator sourceOp, EntityRegister sourceNode, Direction dir,
-                           EntityRegister destinationNode )
+    public ExpandToNodeOp( StatementContext ctx,
+                           Operator sourceOp, EntityRegister sourceNode,
+                           Direction dir, EntityRegister destinationNode )
     {
         this.ctx = ctx;
         this.sourceOp = sourceOp;
