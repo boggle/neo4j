@@ -24,6 +24,7 @@ import org.neo4j.graphdb._
 import org.neo4j.tooling.GlobalGraphOperations
 import org.neo4j.cypher.internal.compiler.v2_1.runtime._
 import collection.mutable
+import org.neo4j.cypher.performance.MicroBench
 
 class OperatorTest extends ExecutionEngineHelper {
 
@@ -192,15 +193,9 @@ class OperatorTest extends ExecutionEngineHelper {
     assert(hashJoin.toList(data).size === 16)
   }
 
-  //@Ignore
+  @Ignore
   @Test def performance_of_expand() {
-    val numTries = 100
-    val skipTries = 20
-
-    val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(2))
-    val e0 = data.entityRegister(0)
-    val e1 = data.entityRegister(1)
-
+    // GIVEN A GRAPH
     for (i <- 0.until(10000)) {
       val source = createLabeledNode("A")
       for (j <- 0.until(10)) {
@@ -210,90 +205,62 @@ class OperatorTest extends ExecutionEngineHelper {
     }
     tx.success()
     tx.close()
-    tx = graph.beginTx()
 
-    val labelToken = 0
+    abstract class ExpandMicroBench(name: String) extends MicroBench(name, 10, 5, 90)
 
-    var cypherTime= new Counter(skipTries)
-    var coreTime = new Counter(skipTries)
-    var opsTime = new Counter(skipTries)
-
-    (0 until numTries) foreach {
-      x =>
-        val start = System.nanoTime()
-        val count = execute("match (a:A)-[r]->() return r").size
-        val end = System.nanoTime()
-
-        val duration = (end - start) / 1000000
-        println(s"old cypher time: ${duration} count: ${count}")
-        cypherTime += duration
+    object OldCypherExpandMicroBench extends ExpandMicroBench("Old Cypher") {
+      def run(): Unit = {
+        init()
+        execute("match (a:A)-[r]->(b) return id(b)").toList
+        after()
+      }
     }
 
-    (0 until numTries) foreach {
-      x =>
-        val label = DynamicLabel.label("A")
-        val start = System.nanoTime()
+    object CoreAPIExpandMicroBench extends ExpandMicroBench("Core API") {
+      val label = DynamicLabel.label("A")
+
+      def run(): Unit = {
+        val result = Array.newBuilder[scala.Long]
+        init()
         val allNodes: ResourceIterable[Node] = GlobalGraphOperations.at(graph).getAllNodesWithLabel(label)
         val nodes: ResourceIterator[Node] = allNodes.iterator()
-        var count = 0
-        val result = Array.newBuilder[Relationship]
         while (nodes.hasNext) {
           val current = nodes.next()
           val relationships = current.getRelationships(Direction.OUTGOING).iterator()
-          while(relationships.hasNext()) {
-            count += 1
-            result += relationships.next()
+          while(relationships.hasNext) {
+            result += relationships.next().getEndNode.getId
           }
         }
+        after()
         result.result()
-        val end = System.nanoTime()
-
-        val duration = (end - start) / 1000000
-        println(s"core time: ${duration} count: ${count}")
-        coreTime += duration
+      }
     }
 
-    (0 until numTries) foreach {
-      x =>
-        val start = System.nanoTime()
+    object NewCypherExpandMicroBench extends ExpandMicroBench("New Cypher") {
+      val labelToken = 0
+      val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(2))
+      val e0 = data.entityRegister(0)
+      val e1 = data.entityRegister(1)
 
-        val lhs = {
-          new LabelScanOp(ctx, labelToken, e0)
-        }
+      def run(): Unit = {
+        val lhs = new LabelScanOp(ctx, labelToken, e0)
         val expand = new ExpandToNodeOp(ctx, lhs, e0, Direction.OUTGOING, e1)
-
-        var count = 0
         val result = Array.newBuilder[scala.Long]
+        init()
         expand.open()
         while (expand.next()) {
-          result += e1.getEntity.toLong 
-          count += 1
+          result += e1.getEntity.toLong
         }
         expand.close()
+        after()
         result.result()
-        val end = System.nanoTime()
-
-        val duration = (end - start) / 1000000
-        println(s"new operator time: ${duration} count: ${count}")
-        opsTime += duration
-    }
-
-    println(s"cypher: ${cypherTime.avg}")
-    println(s"core: ${coreTime.avg}")
-    println(s"ops: ${opsTime.avg}")
-  }
-
-  class Counter(skip: Int) {
-    var sum: Double = 0.0
-    var count = -skip
-
-    def +=(v: Double) {
-      if (count >=0) {
-        sum += v
       }
-      count += 1
     }
 
-    def avg = sum/count
+    println(OldCypherExpandMicroBench.name -> OldCypherExpandMicroBench())
+    println(CoreAPIExpandMicroBench.name -> CoreAPIExpandMicroBench())
+    println(NewCypherExpandMicroBench.name -> NewCypherExpandMicroBench())
   }
 }
+
+

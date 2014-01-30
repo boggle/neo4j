@@ -81,19 +81,51 @@ public class StatementContext
     {
         final Node nodeById = graph.getNodeById(nodeId);
         final Iterator<Relationship> relationships = nodeById.getRelationships(direction).iterator();
-        return new PrimitiveLongIterator()
-        {
-            @Override
-            public boolean hasNext()
-            {
-                return relationships.hasNext();
-            }
 
-            @Override
-            public long next()
-            {
-                return relationships.next().getOtherNode(nodeById).getId();
-            }
-        };
+        switch ( direction ) {
+            case OUTGOING:
+                return new RelationshipIterator(relationships)
+                {
+                    @Override
+                    public long next()
+                    {
+                        return relationships.next().getEndNode().getId();
+                    }
+                };
+            case INCOMING:
+                return new RelationshipIterator(relationships)
+                {
+                    @Override
+                    public long next()
+                    {
+                        return relationships.next().getStartNode().getId();
+                    }
+                };
+            default:
+                return new RelationshipIterator(relationships)
+                {
+                    @Override
+                    public long next()
+                    {
+                        return relationships.next().getOtherNode( nodeById ).getId();
+                    }
+                };
+
+        }
+    }
+
+    private static abstract class RelationshipIterator implements PrimitiveLongIterator {
+        private final Iterator<Relationship> relationships;
+
+        private RelationshipIterator( Iterator<Relationship> relationships )
+        {
+            this.relationships = relationships;
+        }
+
+        @Override
+        public boolean hasNext()
+        {
+            return relationships.hasNext();
+        }
     }
 }
