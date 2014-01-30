@@ -23,25 +23,25 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.helpers.collection.IteratorUtil;
 import org.neo4j.kernel.impl.util.PrimitiveLongIterator;
 
-public class ExpandToNodeOp implements Operator
+public class ExpandToRelOp implements Operator
 {
     private final StatementContext ctx;
     private final Operator sourceOp;
     private final EntityRegister sourceNode;
     private final Direction dir;
-    private final EntityRegister destinationNode;
-    private PrimitiveLongIterator currentNodes;
+    private final EntityRegister destinationRel;
+    private PrimitiveLongIterator currentRels;
 
-    public ExpandToNodeOp( StatementContext ctx,
+    public ExpandToRelOp( StatementContext ctx,
                            Operator sourceOp, EntityRegister sourceNode,
-                           Direction dir, EntityRegister destinationNode )
+                           Direction dir, EntityRegister destinationRel )
     {
         this.ctx = ctx;
         this.sourceOp = sourceOp;
         this.sourceNode = sourceNode;
         this.dir = dir;
-        this.destinationNode = destinationNode;
-        this.currentNodes = IteratorUtil.emptyPrimitiveLongIterator();
+        this.destinationRel = destinationRel;
+        this.currentRels = IteratorUtil.emptyPrimitiveLongIterator();
     }
 
     @Override
@@ -53,19 +53,19 @@ public class ExpandToNodeOp implements Operator
     @Override
     public boolean next()
     {
-        while (!currentNodes.hasNext() && sourceOp.next())
+        while (!currentRels.hasNext() && sourceOp.next())
         {
             long fromNodeId = sourceNode.getEntity();
-            currentNodes = ctx.FAKE_nodeGetRelatedNodes( fromNodeId, dir );
+            currentRels = ctx.FAKE_nodeGetRelationships( fromNodeId, dir );
         }
 
-        if (!currentNodes.hasNext())
+        if (!currentRels.hasNext())
         {
             return false;
         }
 
-        long nextNode = currentNodes.next();
-        destinationNode.setEntity( nextNode );
+        long nextNode = currentRels.next();
+        destinationRel.setEntity( nextNode );
 
         return true;
     }

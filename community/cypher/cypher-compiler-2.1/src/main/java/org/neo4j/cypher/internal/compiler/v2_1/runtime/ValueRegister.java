@@ -25,4 +25,16 @@ public final class ValueRegister implements Register
     {
         this.value = value;
     }
+
+    @Override
+    public boolean isNull()
+    {
+        return null == value;
+    }
+
+    @Override
+    public void setNull()
+    {
+        value = null;
+    }
 }

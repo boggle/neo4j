@@ -37,4 +37,16 @@ public final class EntityRegister implements Register
     {
         setEntity( (long) value );
     }
+
+    @Override
+    public boolean isNull()
+    {
+        return StatementConstants.NO_SUCH_NODE == entity;
+    }
+
+    @Override
+    public void setNull()
+    {
+        entity = StatementConstants.NO_SUCH_NODE;
+    }
 }

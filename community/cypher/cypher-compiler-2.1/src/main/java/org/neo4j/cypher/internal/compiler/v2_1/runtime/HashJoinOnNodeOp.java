@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HashJoinOp implements Operator {
+public class HashJoinOnNodeOp implements Operator {
     private final StatementContext ctx;
     private final EntityRegister joinRegister;
     private final Registers lhsTail;
@@ -33,11 +33,11 @@ public class HashJoinOp implements Operator {
     private int bucketPos = 0;
     private ArrayList<RegisterSnapshot> currentBucketEntry = null;
 
-    public HashJoinOp(StatementContext ctx,
-                      EntityRegister joinNode,
-                      Registers lhsTail,
-                      Operator lhs,
-                      Operator rhs)
+    public HashJoinOnNodeOp( StatementContext ctx,
+                             EntityRegister joinNode,
+                             Registers lhsTail,
+                             Operator lhs,
+                             Operator rhs )
     {
         this.ctx = ctx;
         this.joinRegister = joinNode;
@@ -57,7 +57,7 @@ public class HashJoinOp implements Operator {
 
     @Override
     public boolean next() {
-        while (currentBucketEntry == null || bucketPos >= currentBucketEntry.size())
+        while ( currentBucketEntry == null || bucketPos >= currentBucketEntry.size() )
         {
             // If we've emptied our rhs, we're done here
             if (!rhs.next()) {
@@ -74,9 +74,10 @@ public class HashJoinOp implements Operator {
         return true;
     }
 
-    private void produceMatchIfPossible() {
+    private void produceMatchIfPossible()
+    {
         long key = joinRegister.getEntity();
-        currentBucketEntry = bucket.get(key);
+        currentBucketEntry = bucket.get( key );
         bucketPos = 0;
     }
 
@@ -91,15 +92,13 @@ public class HashJoinOp implements Operator {
         while (lhs.next())
         {
             long key = joinRegister.getEntity();
-            ArrayList<RegisterSnapshot> objects = getTailEntriesForId(key);
-            RegisterSnapshot tailEntry = copyToTailEntry();
-            objects.add(tailEntry);
+            getTailEntriesForId( key ).add( copyToTailEntry() );
         }
     }
 
-    private ArrayList<RegisterSnapshot> getTailEntriesForId(long key)
+    private ArrayList<RegisterSnapshot> getTailEntriesForId( long key )
     {
-        ArrayList<RegisterSnapshot> objects = bucket.get(key);
+        ArrayList<RegisterSnapshot> objects = bucket.get( key );
         if (objects == null) {
             objects = new ArrayList<>();
             bucket.put(key, objects);
@@ -107,14 +106,12 @@ public class HashJoinOp implements Operator {
         return objects;
     }
 
-    private void restoreFromTailEntry() {
-        int idx = bucketPos++;
-        RegisterSnapshot from = currentBucketEntry.get(idx);
-        from.restore( lhsTail );
-    }
-
     private RegisterSnapshot copyToTailEntry()
     {
         return new RegisterSnapshot( lhsTail );
+    }
+
+    private void restoreFromTailEntry() {
+        currentBucketEntry.get( bucketPos++ ).restore( lhsTail );
     }
 }

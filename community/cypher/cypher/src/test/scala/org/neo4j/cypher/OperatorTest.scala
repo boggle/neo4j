@@ -153,7 +153,7 @@ class OperatorTest extends ExecutionEngineHelper {
     val rhs = new ExpandToNodeOp(ctx, labelScan2, e2, Direction.OUTGOING, e0)
 
     val lhsTail = new DirectRegisters( Array.empty, Array(e1) )
-    val hashJoin = new HashJoinOp(ctx, e0, lhsTail, lhs, rhs)
+    val hashJoin = new HashJoinOnNodeOp(ctx, e0, lhsTail, lhs, rhs)
 
     implicit val table = Map("a" -> Long(0), "b" -> Long(1), "c" -> Long(2))
 
@@ -186,7 +186,7 @@ class OperatorTest extends ExecutionEngineHelper {
     val rhs = new ExpandToNodeOp(ctx, labelScan2, e2, Direction.OUTGOING, e0)
 
     val lhsTail = new DirectRegisters( Array.empty, Array(e1) )
-    val hashJoin = new HashJoinOp(ctx, e0, lhsTail, lhs, rhs)
+    val hashJoin = new HashJoinOnNodeOp(ctx, e0, lhsTail, lhs, rhs)
 
     implicit val table = Map("a" -> Long(0), "b" -> Long(1), "c" -> Long(2))
 
@@ -194,7 +194,7 @@ class OperatorTest extends ExecutionEngineHelper {
   }
 
   @Ignore
-  @Test def performance_of_expand() {
+  @Test def performance_of_node_expand() {
     // GIVEN A GRAPH
     for (i <- 0.until(10000)) {
       val source = createLabeledNode("A")
@@ -257,10 +257,80 @@ class OperatorTest extends ExecutionEngineHelper {
       }
     }
 
-    println(OldCypherExpandMicroBench.name -> OldCypherExpandMicroBench())
-    println(CoreAPIExpandMicroBench.name -> CoreAPIExpandMicroBench())
-    println(NewCypherExpandMicroBench.name -> NewCypherExpandMicroBench())
+    println(OldCypherExpandMicroBench.result)
+    println(CoreAPIExpandMicroBench.result)
+    println(NewCypherExpandMicroBench.result)
   }
+
+  @Ignore
+  @Test def performance_of_rel_expand() {
+    // GIVEN A GRAPH
+    for (i <- 0.until(10000)) {
+      val source = createLabeledNode("A")
+      for (j <- 0.until(10)) {
+        val destination = createNode()
+        relate(source, destination)
+      }
+    }
+    tx.success()
+    tx.close()
+
+    abstract class ExpandMicroBench(name: String) extends MicroBench(name, 10, 5, 90)
+
+    object OldCypherExpandMicroBench extends ExpandMicroBench("Old Cypher") {
+      def run(): Unit = {
+        init()
+        execute("match (a:A)-[r]->() return id(r)").toList
+        after()
+      }
+    }
+
+    object CoreAPIExpandMicroBench extends ExpandMicroBench("Core API") {
+      val label = DynamicLabel.label("A")
+
+      def run(): Unit = {
+        val result = Array.newBuilder[scala.Long]
+        init()
+        val allNodes: ResourceIterable[Node] = GlobalGraphOperations.at(graph).getAllNodesWithLabel(label)
+        val nodes: ResourceIterator[Node] = allNodes.iterator()
+        while (nodes.hasNext) {
+          val current = nodes.next()
+          val relationships = current.getRelationships(Direction.OUTGOING).iterator()
+          while(relationships.hasNext) {
+            result += relationships.next().getId
+          }
+        }
+        after()
+        result.result()
+      }
+    }
+
+    object NewCypherExpandMicroBench extends ExpandMicroBench("New Cypher") {
+      val labelToken = 0
+      val data = registerFactory.createRegisters(RegisterSignature.newWithEntityRegisters(2))
+      val e0 = data.entityRegister(0)
+      val e1 = data.entityRegister(1)
+
+      def run(): Unit = {
+        val lhs = new LabelScanOp(ctx, labelToken, e0)
+        val expand = new ExpandToRelOp(ctx, lhs, e0, Direction.OUTGOING, e1)
+        val result = Array.newBuilder[scala.Long]
+        init()
+        expand.open()
+        while (expand.next()) {
+          result += e1.getEntity.toLong
+        }
+        expand.close()
+        after()
+        result.result()
+      }
+    }
+
+    println(OldCypherExpandMicroBench.result)
+    println(CoreAPIExpandMicroBench.result)
+    println(NewCypherExpandMicroBench.result)
+  }
+
 }
 
 

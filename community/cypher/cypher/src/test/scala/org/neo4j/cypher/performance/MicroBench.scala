@@ -22,7 +22,10 @@ abstract class MicroBench(val name: String, val warmUpRuns: Int, val chopRuns: I
     } finally {
       shutdown()
     }
+
   }
+
+  def result = toString -> apply()
 
   override def toString = name
 }

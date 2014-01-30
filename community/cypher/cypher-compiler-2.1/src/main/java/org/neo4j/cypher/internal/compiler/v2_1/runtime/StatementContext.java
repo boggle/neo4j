@@ -77,7 +77,22 @@ public class StatementContext
         };
     }
 
-    public PrimitiveLongIterator FAKE_nodeGetRelated( long nodeId, Direction direction )
+    public PrimitiveLongIterator FAKE_nodeGetRelationships( long nodeId, Direction direction )
+    {
+        final Node nodeById = graph.getNodeById(nodeId);
+        final Iterator<Relationship> relationships = nodeById.getRelationships(direction).iterator();
+
+        return new RelationshipIterator(relationships)
+        {
+            @Override
+            public long next()
+            {
+                return relationships.next().getId();
+            }
+        };
+    }
+
+    public PrimitiveLongIterator FAKE_nodeGetRelatedNodes( long nodeId, Direction direction )
     {
         final Node nodeById = graph.getNodeById(nodeId);
         final Iterator<Relationship> relationships = nodeById.getRelationships(direction).iterator();
