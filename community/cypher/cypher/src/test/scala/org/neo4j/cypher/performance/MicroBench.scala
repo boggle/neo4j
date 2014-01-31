@@ -1,11 +1,14 @@
 package org.neo4j.cypher.performance
 
-abstract class MicroBench(val name: String, val warmUpRuns: Int, val chopRuns: Int, val measuredRuns: Int) {
+abstract class MicroBench(val name: String, val warmUpRuns: Int, val chopRuns: Int, val measuredRuns: Int,
+                          val unit: Long = 1000000L) {
 
   def setup() {}
   def shutdown() {}
   
   def run(): Unit
+
+  def convert(duration: Long) = duration / unit
 
   def apply(): MicroStats = {
     val collector = Seq.newBuilder[Double]
@@ -16,7 +19,7 @@ abstract class MicroBench(val name: String, val warmUpRuns: Int, val chopRuns: I
         val start = System.nanoTime()
         run()
         val end = System.nanoTime()
-        collector += (end - start) / 1000000
+        collector += convert(end-start)
       }
       MicroStats(collector.result().sorted.drop(chopRuns).dropRight(chopRuns))
     } finally {
@@ -58,4 +61,6 @@ object MicroStats {
   }
 }
 
-final case class MicroStats(min: Double, max: Double, avg: Double, dev: Double, count: Int)
+final case class MicroStats(min: Double, max: Double, avg: Double, dev: Double, count: Int) {
+  override def toString()= s"MicroStats(min=$min, max=$max, avg=$avg, dev=$dev, count=$count"
+}

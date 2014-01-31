@@ -26,4 +26,6 @@ public interface Registers
 
     ValueRegister valueRegister( int idx );
     EntityRegister entityRegister( int idx );
+
+    Registers copy();
 }

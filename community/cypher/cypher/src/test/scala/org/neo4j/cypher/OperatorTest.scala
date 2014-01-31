@@ -25,6 +25,7 @@ import org.neo4j.tooling.GlobalGraphOperations
 import org.neo4j.cypher.internal.compiler.v2_1.runtime._
 import collection.mutable
 import org.neo4j.cypher.performance.MicroBench
+import scala.Long
 
 class OperatorTest extends ExecutionEngineHelper {
 
@@ -331,6 +332,232 @@ class OperatorTest extends ExecutionEngineHelper {
     println(NewCypherExpandMicroBench.result)
   }
 
+  @Ignore
+  @Test def performance_of_register_access() {
+    
+    abstract class RegisterAccessBench(name: String) extends MicroBench(name, 10000, 0, 9000, unit = 1000L) {
+      var count = 0L
+
+      def run(): Unit = {
+        (0 until 100000).foreach { _ =>
+          //prepare(Math.abs(count.toInt % 10))
+          access()
+        }
+      }
+
+      def prepare(idx: Int)
+
+      def access(): Unit
+    }
+    
+    object DirectAccess extends RegisterAccessBench("Direct") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) )
+      var register = registers.entityRegister(0)
+
+      def prepare(idx: Int): Unit = {
+        register = registers.entityRegister(idx)
+      }
+
+      def access(): Unit = {
+        register.setEntity(count + 1L)
+        count = register.getEntity
+      } 
+    }
+    
+    object IndirectAccess extends RegisterAccessBench("Indirect") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) )
+      var idx = 0
+
+      def prepare(idx: Int): Unit = {
+        this.idx = idx
+      }
+
+      def access(): Unit = {
+        val register = registers.entityRegister(idx)
+        register.setEntity(count + 1L)
+        count = register.getEntity
+      }
+    }
+
+    object ArrayAccess extends RegisterAccessBench("Array") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) )
+      val snapshot = new RegisterSnapshot( registers )
+      var idx = 0
+
+      def prepare(idx: Int): Unit = {
+        this.idx = idx
+      }
+
+      def access(): Unit = {
+        snapshot.setEntityValue(idx, count + 1L)
+        count = snapshot.getEntityValue(idx)
+      }
+    }
+
+    object UnsafeArrayAccess extends RegisterAccessBench("Unsafe Array") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) )
+      val snapshot = new RegisterSnapshot( registers )
+      var idx = 0
+
+      def prepare(idx: Int): Unit = {
+        this.idx = idx
+      }
+
+      def access(): Unit = {
+        snapshot.setUnsafeEntityValue(idx, count + 1L)
+        count = snapshot.getUnsafeEntityValue(idx)
+      }
+    }
+
+    println(UnsafeArrayAccess.result)
+    println(IndirectAccess.result)
+    println(ArrayAccess.result)
+    println(DirectAccess.result)
+
+    println("again")
+
+    println(UnsafeArrayAccess.result)
+    println(IndirectAccess.result)
+    println(ArrayAccess.result)
+    println(DirectAccess.result)
+
+    println("again")
+
+    println(UnsafeArrayAccess.result)
+    println(DirectAccess.result)
+    println(IndirectAccess.result)
+    println(ArrayAccess.result)
+
+
+    println("again")
+
+    println(ArrayAccess.result)
+    println(DirectAccess.result)
+    println(UnsafeArrayAccess.result)
+    println(IndirectAccess.result)
+  }
+
+  @Ignore
+  @Test def performance_of_seq_register_copy() {
+    abstract class RegisterCopyBench(name: String) extends MicroBench(name, 10000, 0, 9000, unit = 1000L) {
+      var count = 0L
+
+      def run(): Unit = {
+        (0 until 10000).foreach { _ =>
+          access()
+        }
+      }
+
+      def access(): Unit
+    }
+
+    object RegisterCopy extends RegisterCopyBench("Direct") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) )
+
+      def access(): Unit = {
+        registers.copy()
+      }
+    }
+
+    object ArrayCopy extends RegisterCopyBench("Array") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) )
+      val snapshot = new RegisterSnapshot( registers )
+
+      def access(): Unit = {
+        snapshot.copy()
+      }
+    }
+
+    object ArrayCopy2 extends RegisterCopyBench("Array2") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) )
+      val snapshot = new RegisterSnapshot( registers )
+
+      def access(): Unit = {
+        snapshot.copy2()
+      }
+    }
+    println(RegisterCopy.result)
+    println(ArrayCopy.result)
+    println(ArrayCopy2.result)
+
+    println("again")
+
+    println(RegisterCopy.result)
+    println(ArrayCopy.result)
+    println(ArrayCopy2.result)
+
+    println("again")
+
+    println(RegisterCopy.result)
+    println(ArrayCopy.result)
+    println(ArrayCopy2.result)
+  }
+
+  @Ignore
+  @Test def performance_of_rand_register_copy() {
+    abstract class RegisterCopyBench(name: String) extends MicroBench(name, 10000, 0, 9000, unit = 1000L) {
+      var count = 0L
+
+      val scan = Array(7, 3, 1, 2, 6, 5, 4, 9, 8, 0)
+
+      def run(): Unit = {
+        (0 until 10000).foreach { _ =>
+          access()
+        }
+      }
+
+      def access(): Unit
+    }
+
+    object RegisterCopy extends RegisterCopyBench("Copy Registers") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) ).asInstanceOf[DirectRegisters]
+
+      def access(): Unit = {
+        val copy = new DirectRegisters( registers.signature() )
+        copy.setEntitiesFrom( registers, scan )
+      }
+    }
+
+    object RegisterToArrayCopy extends RegisterCopyBench("Copy Registers to Array") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) ).asInstanceOf[DirectRegisters]
+
+      def access(): Unit = {
+        val copy = new RegisterSnapshot( RegisterSnapshot.NO_VALUES, registers.copyEntities(scan) )
+      }
+    }
+
+    object ArrayCopy extends RegisterCopyBench("Copy Arrays") {
+      val registers = DirectRegisters.FACTORY.createRegisters( RegisterSignature.newWithEntityRegisters(10) )
+      val snapshot = new RegisterSnapshot( registers )
+
+      def access(): Unit = {
+        val copy = new RegisterSnapshot( RegisterSnapshot.NO_VALUES, Array.ofDim(10) )
+        var i = 0
+        while (i < 10)
+        {
+          val idx = scan(i)
+          copy.setEntityValue( idx, snapshot.getEntityValue( idx ) )
+          i += 1
+        }
+      }
+    }
+
+    println(RegisterCopy.result)
+    println(RegisterToArrayCopy.result)
+    println(ArrayCopy.result)
+
+    println("again")
+
+    println(RegisterCopy.result)
+    println(RegisterToArrayCopy.result)
+    println(ArrayCopy.result)
+
+    println("again")
+
+    println(RegisterCopy.result)
+    println(RegisterToArrayCopy.result)
+    println(ArrayCopy.result)
+  }
 }
 
 
