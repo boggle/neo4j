@@ -22,6 +22,7 @@ package org.neo4j.cypher.internal.compiler.v2_1.ast
 import org.neo4j.cypher.internal.compiler.v2_1._
 import org.neo4j.cypher.internal.compiler.v2_1.LabelId
 import org.neo4j.cypher.internal.compiler.v2_1.RelTypeId
+import org.neo4j.cypher.internal.compiler.v2_1.data.TypingStage
 
 sealed trait SymbolicToken[T <: NameId]  {
   self: SymbolicName =>
