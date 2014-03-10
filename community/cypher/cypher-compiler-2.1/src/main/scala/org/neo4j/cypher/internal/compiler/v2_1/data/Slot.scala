@@ -1,38 +1,41 @@
 package org.neo4j.cypher.internal.compiler.v2_1.data
 
-trait SlotReader[T] extends (Unit => T) {
-  final override def apply(v: Unit): T = apply()
+trait Slot[T] {
+  final def apply() = get
 
-  def apply():T
+  def get: T
 }
 
-sealed abstract class Stage {
-  type Slot[T] <: SlotReader[T]
+sealed class Stage
 
-  def newEmptySlot[T]: Slot[T] = newSlot[T](None)
-  def newValueSlot[T](initialValue: T): Slot[T] = newSlot(Option(initialValue))
+object Stage {
 
-  def newSlot[T](initialValue: Option[T]): Slot[T]
-
-  def get[T](slot: Slot[T]) = slot()
-
-  def set[T](slot: Slot[T], value: T)
-}
-
-sealed abstract class StageImpl extends Stage {
-  override type Slot[T] = SlotImpl[T]
-
-  def newSlot[T](initialValue: Option[T]): Slot[T] =  new SlotImpl[T](initialValue)
-
-  def set[T](slot: Slot[T], newValue: T) {
-    slot._value = Option(newValue)
+  class SimpleSlot[T](protected var value: T) extends Slot[T] {
+    def get = Option(value).get
+    protected[Stage] def set(newValue: T) { value = newValue }
   }
 
-  class SlotImpl[T](initialValue: Option[T]) extends SlotReader[T] {
-    private[StageImpl] var _value = initialValue
-    def apply(): T = initialValue.get
+  object Typing extends Stage {
+    def newTypeSlot[T](initialValue: T) = new TypeSlot[T](initialValue)
+    def setTypeSlot[T](slot: TypeSlot[T], newValue: T) = slot.set(newValue)
+
+    class TypeSlot[T](initialValue: T) extends SimpleSlot[T](initialValue)
+  }
+
+
+  object Rewriting extends Stage {
+    def newTypeSlot[T](initialValue: T) = new RewritingSlot[T](initialValue)
+    def setTypeSlot[T](slot: RewritingSlot[T], newValue: T) = slot.set(newValue)
+
+    class RewritingSlot[T](initialValue: T) extends SimpleSlot[T](initialValue)
   }
 }
 
-object RewritingStage extends StageImpl
-object TypingStage extends StageImpl
+object Foo {
+
+  def foo(a: Stage.Typing.TypeSlot[Int]) {
+    val b = Stage.Rewriting.newTypeSlot[Int](12)
+    Stage.Rewriting.setTypeSlot(b, 12)
+    Stage.Typing.setTypeSlot(a, a.get)
+  }
+}
