@@ -24,7 +24,7 @@ import ast._
 import org.neo4j.cypher
 
 object normalizeArithmeticExpressions extends Rewriter {
-  def apply(that: AnyRef): Option[AnyRef] =
+  def apply(that: (RewritingContext, AnyRef)): (RewritingContext, AnyRef) =
   try {
     instance.apply(that)
   } catch {

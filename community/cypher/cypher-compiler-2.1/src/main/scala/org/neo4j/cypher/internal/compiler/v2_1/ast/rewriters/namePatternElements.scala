@@ -23,7 +23,7 @@ import org.neo4j.cypher.internal.compiler.v2_1._
 import ast._
 
 object namePatternElements extends Rewriter {
-  def apply(that: AnyRef): Option[AnyRef] = instance.apply(that)
+  def apply(that: (RewritingContext, AnyRef)): (RewritingContext, AnyRef) = instance.apply(that)
 
   private val instance: Rewriter = Rewriter.lift {
     case pattern: NodePattern if !pattern.identifier.isDefined =>

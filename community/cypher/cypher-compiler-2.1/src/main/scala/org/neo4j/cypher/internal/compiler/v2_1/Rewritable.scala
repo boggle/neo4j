@@ -21,15 +21,62 @@ package org.neo4j.cypher.internal.compiler.v2_1
 
 import java.lang.reflect.Method
 import scala.collection.mutable.{HashMap => MutableHashMap}
+import org.neo4j.cypher.internal.compiler.v2_1.symbols.TypeSpec
+import org.neo4j.cypher.InternalException
+
+case class RewritingContext(state: SemanticState) {
+  def apply(typeChanges: Seq[(ast.Expression, TypeSpec)]) = {
+    val resultState =typeChanges.foldLeft(state){ (state: SemanticState, update: (ast.Expression, TypeSpec)) =>
+      val (expr, typeSpec) = update
+      state.specifyType(expr, typeSpec) match {
+        case Right(newState) => newState
+        case Left(semError)  => throw new InternalException(semError.msg)
+      }
+    }
+    copy(state = resultState)
+  }
+}
+
+object RewritingContext {
+  def empty = RewritingContext(state = SemanticState.clean)
+}
 
 object Rewriter {
   implicit class LiftedRewriter(f: (AnyRef => Option[AnyRef])) extends Rewriter {
-    def apply(that: AnyRef): Option[AnyRef] = f.apply(that)
+    def apply(v: (RewritingContext, AnyRef)): (RewritingContext, AnyRef) = v match {
+      case (context, astNode) => f(astNode) match {
+        case Some(replacement) => (context, replacement)
+        case None              => v
+      }
+    }
   }
-  def lift(f: PartialFunction[AnyRef, AnyRef]): Rewriter = f.lift
+
+  def typedLift(f: PartialFunction[AnyRef, RewriteResult]): Rewriter = new Rewriter {
+    def apply(v: (RewritingContext, AnyRef)): (RewritingContext, AnyRef) =
+      if (f.isDefinedAt(v))
+        f(v) match {
+          case DoRewrite(replacement, typeChanges) =>
+            (v._1(typeChanges), replacement)
+          case DoNotRewrite =>
+            v
+        }
+    else
+        v
+  }
+
+  def lift(f: PartialFunction[AnyRef, AnyRef]): Rewriter = new Rewriter {
+    def apply(v: (RewritingContext, AnyRef)): (RewritingContext, AnyRef) = v match {
+      case (context, astNode) if f.isDefinedAt(astNode) => (context, f(astNode))
+      case _                                            => v
+    }
+  }
 }
 
-trait Rewriter extends (AnyRef => Option[AnyRef])
+sealed trait RewriteResult
+final case class DoRewrite(replacement: AnyRef, typeChanges: Seq[(ast.Expression, TypeSpec)] = Seq.empty) extends RewriteResult
+case object DoNotRewrite extends RewriteResult
+
+trait Rewriter extends (((RewritingContext, AnyRef)) => (RewritingContext, AnyRef))
 
 
 object Rewritable {
@@ -44,19 +91,32 @@ object Rewritable {
   }
 
   implicit class DuplicatableAny(val that: AnyRef) extends AnyVal {
-    def dup(rewriter: AnyRef => AnyRef): AnyRef = that match {
+    def dup(context: RewritingContext)(rewriter: ((RewritingContext, AnyRef)) => (RewritingContext, AnyRef)): (RewritingContext, AnyRef) = that match {
       case p: Product with AnyRef =>
-        val rewrittenChildren = p.productIterator.asInstanceOf[Iterator[AnyRef]].map(rewriter).toList
+        val (rewrittenContext, rewrittenChildren) = DuplicatableAny.foldMap(context)(rewriter)(p.productIterator.asInstanceOf[Iterator[AnyRef]].toSeq)
+
         if (p.productIterator.asInstanceOf[Iterator[AnyRef]] eqElements rewrittenChildren.iterator)
-          p
+          (rewrittenContext, p)
         else
-          p.dup(rewrittenChildren).asInstanceOf[AnyRef]
+          p.dup(rewrittenChildren.toSeq).asInstanceOf[(RewritingContext, AnyRef)]
       case s: IndexedSeq[_] =>
-        s.asInstanceOf[IndexedSeq[AnyRef]].map(rewriter)
+        DuplicatableAny.foldMap(context)(rewriter)(s.asInstanceOf[IndexedSeq[AnyRef]])
       case s: Seq[_] =>
-        s.asInstanceOf[Seq[AnyRef]].map(rewriter)
+        DuplicatableAny.foldMap(context)(rewriter)(s.asInstanceOf[Seq[AnyRef]])
       case t =>
-        t
+        (context, t)
+    }
+  }
+
+  object DuplicatableAny {
+    def foldMap[A, B](init: A)(f: ((A, B)) => (A, B))(items: Iterable[B]): (A, Iterable[B]) = {
+      var current = init
+      val mapped = items.map { item =>
+        val (updatedCurrent, updatedItem) = f((current, item))
+        current = updatedCurrent
+        updatedItem
+      }
+      (current, mapped)
     }
   }
 
@@ -79,7 +139,12 @@ object Rewritable {
   }
 
   implicit class RewritableAny(val that: AnyRef) extends AnyVal {
-    def rewrite(rewriter: Rewriter): AnyRef = rewriter.apply(that).getOrElse(that)
+    def rewrite(rewriter: Rewriter): AnyRef = {
+      val (_, result) = rewrite(RewritingContext.empty)(rewriter)
+      result
+    }
+
+    def rewrite(rewritingContext: RewritingContext)(rewriter: Rewriter): (RewritingContext, AnyRef) = rewriter.apply((rewritingContext, that))
   }
 }
 
@@ -89,48 +154,25 @@ trait Rewritable {
 
 case class topDown(rewriters: Rewriter*) extends Rewriter {
   import Rewritable._
-  def apply(that: AnyRef): Some[AnyRef] = {
-    val rewrittenThat = rewriters.foldLeft(that) {
-      (t, r) => t.rewrite(r)
-    }
-    Some(rewrittenThat.dup(t => this.apply(t).get))
-  }
-}
 
-case class untilMatched(rewriter: Rewriter) extends Rewriter {
-  import Rewritable._
-  def apply(that: AnyRef): Some[AnyRef] =
-    Some(rewriter.apply(that).getOrElse(that.dup(t => this.apply(t).get)))
+  def apply(that: (RewritingContext, AnyRef)): (RewritingContext, AnyRef) = {
+    val (rewrittenContext, rewrittenThat) = rewriters.foldLeft(that) {
+      case ((context, t), r) => t.rewrite(context)(r)
+    }
+
+    rewrittenThat.dup(rewrittenContext)( pair => this.apply(pair))
+  }
 }
 
 case class bottomUp(rewriters: Rewriter*) extends Rewriter {
   import Rewritable._
-  def apply(that: AnyRef): Some[AnyRef] =
-    Some(rewriters.foldLeft(that.dup(t => this.apply(t).get)) {
-      (t, r) => t.rewrite(r)
-    })
-}
 
-case class bottomUpRepeated(rewriter: Rewriter) extends Rewriter {
-  import Rewritable._
-  def apply(that: AnyRef): Some[AnyRef] = {
-    val rewrittenThat = that.dup(t => this.apply(t).get)
-    rewriter.apply(rewrittenThat).fold(Some(rewrittenThat)) {
-      t => if (t eq that)
-        Some(t)
-      else
-        Some(t.rewrite(this))
+  def apply(v: (RewritingContext, AnyRef)): (RewritingContext, AnyRef) = {
+    val (initialContext, that) = v
+    val rewrittenThat = that.dup(initialContext)( pair => this.apply(pair))
+
+    rewriters.foldLeft(rewrittenThat) {
+      case ((context, t), r) => t.rewrite(context)(r)
     }
   }
-}
-
-case class repeat(rewriter: Rewriter) extends Rewriter {
-  import Rewritable._
-  def apply(that: AnyRef): Option[AnyRef] =
-    rewriter.apply(that).map {
-      t => if (t eq that)
-        that
-      else
-        t.rewrite(this)
-    }
 }

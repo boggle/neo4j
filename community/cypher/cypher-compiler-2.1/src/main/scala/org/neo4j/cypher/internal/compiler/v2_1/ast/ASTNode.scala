@@ -20,18 +20,27 @@
 package org.neo4j.cypher.internal.compiler.v2_1.ast
 
 import org.neo4j.cypher.internal.compiler.v2_1._
+import org.neo4j.cypher.internal.compiler.v2_1.symbols.TypeSpec
 
 trait ASTNode extends Product with Foldable with Rewritable {
   import Rewritable._
   def position: InputPosition
+  var typeInfo:TypeSpec = _
 
   def dup(children: Seq[AnyRef]): this.type = {
     val constructor = this.copyConstructor
     val params = constructor.getParameterTypes
     val args = children.toVector
-    if ((params.length == args.length + 1) && params.last.isAssignableFrom(classOf[InputPosition]))
-      constructor.invoke(this, args :+ this.position: _*).asInstanceOf[this.type]
-    else
-      constructor.invoke(this, args: _*).asInstanceOf[this.type]
+    try {
+      if ((params.length == args.length + 1) && params.last.isAssignableFrom(classOf[InputPosition]))
+        constructor.invoke(this, args :+ this.position: _*).asInstanceOf[this.type]
+      else
+        constructor.invoke(this, args: _*).asInstanceOf[this.type]
+    }
+    catch {
+      case e =>
+        println(e)
+        throw e
+    }
   }
 }
