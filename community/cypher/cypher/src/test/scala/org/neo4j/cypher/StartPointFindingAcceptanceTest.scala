@@ -51,5 +51,11 @@ class StartPointFindingAcceptanceTest extends ExecutionEngineFunSuite with NewPl
 
     executeScalarWithNewPlanner[Node](s"match n where  ${node.getId} = id(n) return n") should equal(node)
   }
+
+  test("Scan single relationship by id given on the right") {
+    val rel = relate(createNode("a"), createNode("b"))
+
+    executeScalarWithNewPlanner[Node](s"match ()-[r]->() where id(r) = ${rel.getId} return r") should equal(rel)
+  }
 }
 
