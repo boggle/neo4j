@@ -33,10 +33,11 @@ class Profiler extends PipeDecorator {
 
   val dbHitsStats: mutable.Map[Pipe, ProfilingQueryContext] = mutable.Map.empty
   val rowStats: mutable.Map[Pipe, ProfilingIterator] = mutable.Map.empty
+  val timer = new ProfilingTimer
 
 
   def decorate(pipe: Pipe, iter: Iterator[ExecutionContext]): Iterator[ExecutionContext] = decoratePipe(pipe, iter) {
-    val resultIter = new ProfilingIterator(iter)
+    val resultIter = new ProfilingIterator(iter, timer)
 
     rowStats(pipe) = resultIter
     resultIter
@@ -65,11 +66,13 @@ class Profiler extends PipeDecorator {
       input: PlanDescription =>
         val pipe = input.pipe
         val rows = rowStats.get(pipe).map(_.count).getOrElse(0L)
+        val duration = rowStats.get(pipe).map(_.duration).getOrElse(0L)
         val dbhits = dbHitsStats.get(pipe).map(_.count).getOrElse(0L)
 
         input
           .addArgument(Arguments.Rows(rows))
           .addArgument(Arguments.DbHits(dbhits))
+          .addArgument(Arguments.Duration(duration))
     }
   }
 }
@@ -111,11 +114,50 @@ final class ProfilingQueryContext(val inner: QueryContext, val p: Pipe) extends 
   override def relationshipOps: Operations[Relationship] = new ProfilerOperations(inner.relationshipOps)
 }
 
-class ProfilingIterator(inner: Iterator[ExecutionContext]) extends Iterator[ExecutionContext] with Counter {
+trait TimeProfiled {
+  private var _duration: Long = 0
 
-  def hasNext: Boolean = inner.hasNext
+  def duration = _duration
+  def elapse(elapsed: Long) { _duration += elapsed }
+}
 
-  def next(): ExecutionContext = {
+class ProfilingTimer {
+  private var lastStart = 0L
+  private var stack = new mutable.Stack[TimeProfiled]
+
+  def apply[T](nextProfiled: TimeProfiled)(f: => T): T = {
+    if (stack.nonEmpty)
+      elapseAccumulated()
+
+    stack.push(nextProfiled)
+    try {
+      val result = f
+      elapseAccumulated()
+      result
+    }
+    finally {
+      stack.pop()
+    }
+  }
+
+  def elapseAccumulated(): Unit = {
+    if (lastStart > 0L) {
+      val elapsed = now - lastStart
+      stack.top.elapse(elapsed)
+    }
+    lastStart = now
+  }
+
+  def now = System.nanoTime()
+}
+
+class ProfilingIterator(inner: Iterator[ExecutionContext], timer: ProfilingTimer) extends Iterator[ExecutionContext] with Counter with TimeProfiled {
+
+  self =>
+
+  def hasNext: Boolean = timer(self)(inner.hasNext)
+
+  def next(): ExecutionContext = timer(self) {
     increment()
     inner.next()
   }

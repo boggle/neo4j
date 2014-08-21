@@ -51,6 +51,7 @@ object PlanDescription {
   object Arguments {
     case class Rows(value: Long) extends Argument
     case class DbHits(value: Long) extends Argument
+    case class Duration(value: Long) extends Argument
     case class IntroducedIdentifier(value: String) extends Argument
     case class ColumnsLeft(value: Seq[String]) extends Argument
     case class LegacyExpression(value: commands.expressions.Expression) extends Argument

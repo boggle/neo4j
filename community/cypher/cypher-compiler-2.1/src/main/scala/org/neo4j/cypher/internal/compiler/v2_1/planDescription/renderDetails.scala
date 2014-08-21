@@ -25,19 +25,20 @@ import scala.collection.mutable
 
 object renderDetails extends (PlanDescription => String) {
 
-  val handledArguments = Set(classOf[Rows], classOf[DbHits], classOf[IntroducedIdentifier])
+  val handledArguments = Set(classOf[Rows], classOf[DbHits], classOf[Duration], classOf[IntroducedIdentifier])
 
   def apply(plan: PlanDescription): String = {
 
     val plans: Seq[PlanDescription] = plan.toSeq
     val names = renderAsTree.createUniqueNames(plan)
 
-    val headers = Seq("Operator", "Rows", "DbHits", "Identifiers", "Other")
+    val headers = Seq("Operator", "Rows", "DbHits", "Duration", "Identifiers", "Other")
     val rows = plans.map {
       p =>
         val name: String = names(p)
         val rows: String = p.arguments.collectFirst { case Rows(count) => count.toString }.getOrElse("?")
         val dbHits: String = p.arguments.collectFirst { case DbHits(count) => count.toString }.getOrElse("?")
+        val duration: String = p.arguments.collectFirst { case Duration(duration) => duration.toString }.getOrElse("?")
         val ids: String = p.arguments.collect { case IntroducedIdentifier(id) => id }.mkString(", ")
         val other = p.arguments.collect {
           case x
@@ -46,7 +47,7 @@ object renderDetails extends (PlanDescription => String) {
               !x.isInstanceOf[IntroducedIdentifier] => PlandescriptionArgumentSerializer.serialize(x)
         }.mkString("; ")
 
-        Seq(name, rows, dbHits, ids, other)
+        Seq(name, rows, dbHits, duration, ids, other)
     }
 
     renderTable(headers, rows)
