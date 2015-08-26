@@ -20,20 +20,20 @@
 package org.neo4j.cypher.internal.compiler.v2_3.ast.convert.commands
 
 import org.neo4j.cypher.internal.compiler.v2_3._
+import org.neo4j.cypher.internal.compiler.v2_3.ast.NestedPipeExpression
 import org.neo4j.cypher.internal.compiler.v2_3.ast.convert.commands.DirectionConverter.toGraphDb
 import org.neo4j.cypher.internal.compiler.v2_3.ast.convert.commands.PatternConverters._
-import org.neo4j.cypher.internal.compiler.v2_3.ast.{InequalitySeekRangeWrapper, NestedPipeExpression, PrefixSeekRangeWrapper}
 import org.neo4j.cypher.internal.compiler.v2_3.commands.expressions.ProjectedPath._
-import org.neo4j.cypher.internal.compiler.v2_3.commands.expressions.{Expression => CommandExpression, InequalitySeekRangeExpression, ProjectedPath}
-import org.neo4j.cypher.internal.compiler.v2_3.commands.predicates.Predicate
+import org.neo4j.cypher.internal.compiler.v2_3.commands.expressions.{Expression => CommandExpression, InequalitySeekRangeExpression, Interpolation, ProjectedPath}
+import org.neo4j.cypher.internal.compiler.v2_3.commands.predicates.{LikeRegexConverter, Predicate}
 import org.neo4j.cypher.internal.compiler.v2_3.commands.values.TokenType._
 import org.neo4j.cypher.internal.compiler.v2_3.commands.values.UnresolvedRelType
 import org.neo4j.cypher.internal.compiler.v2_3.commands.{expressions => commandexpressions, predicates, values => commandvalues}
 import org.neo4j.cypher.internal.frontend.v2_3.ast._
 import org.neo4j.cypher.internal.frontend.v2_3.ast.functions._
 import org.neo4j.cypher.internal.frontend.v2_3.helpers.NonEmptyList
-import org.neo4j.cypher.internal.frontend.v2_3.parser.{LikePatternParser, ParsedLikePattern, convertLikePatternToRegex}
-import org.neo4j.cypher.internal.frontend.v2_3.{InternalException, SemanticDirection, ast}
+import org.neo4j.cypher.internal.frontend.v2_3.parser.{LikePatternParser, convertLikePatternToRegex}
+import org.neo4j.cypher.internal.frontend.v2_3.{ast, InternalException, SemanticDirection}
 import org.neo4j.graphdb.Direction
 
 object ExpressionConverters {
@@ -280,10 +280,11 @@ object ExpressionConverters {
     case e: ast.PathExpression => toCommandProjectedPath(e)
     case e: NestedPipeExpression => commandexpressions.NestedPipeExpression(e.pipe, toCommandProjectedPath(e.path))
     case e: ast.GetDegree => getDegree(e)
-    case e: PrefixSeekRangeWrapper => commandexpressions.PrefixSeekRangeExpression(e.range)
-    case e: InequalitySeekRangeWrapper => InequalitySeekRangeExpression(e.range.mapBounds(toCommandExpression))
+    case e: org.neo4j.cypher.internal.compiler.v2_3.ast.PrefixSeekRangeWrapper => commandexpressions.PrefixSeekRangeExpression(e.range)
+    case e: org.neo4j.cypher.internal.compiler.v2_3.ast.InterpolatedPrefixSeekRangeWrapper => commandexpressions.InterpolatedPrefixSeekRangeExpression(toCommandInterpolation(e.range.prefix))
+    case e: org.neo4j.cypher.internal.compiler.v2_3.ast.InequalitySeekRangeWrapper => InequalitySeekRangeExpression(e.range.mapBounds(toCommandExpression))
     case e: ast.AndedPropertyInequalities => predicates.AndedPropertyComparablePredicates(identifier(e.identifier), toCommandProperty(e.property), e.inequalities.map(inequalityExpression))
-    case e: org.neo4j.cypher.internal.compiler.v2_3.ast.Interpolation => commandexpressions.Interpolation(e.parts.map(toCommandInterpolationPart))
+    case e: ast.Interpolation => toCommandInterpolation(e)
     case _ =>
       throw new InternalException(s"Unknown expression type during transformation (${expression.getClass})")
   }
@@ -297,6 +298,10 @@ object ExpressionConverters {
       case c: Predicate => c
       case c => predicates.CoercedPredicate(c)
     }
+  }
+
+  def toCommandInterpolation(interpolation: ast.Interpolation): Interpolation = {
+    commandexpressions.Interpolation(interpolation.parts.map(toCommandInterpolationPart))
   }
 
   def toCommandInterpolationPart(part: Either[ast.Expression, String]) = part.left.map(toCommandExpression)
@@ -326,7 +331,6 @@ object ExpressionConverters {
     commandexpressions.GetDegree(toCommandExpression(original.node), typ, toGraphDb(original.dir))
   }
 
-
   private def regexMatch(e: ast.MatchRegex) = toCommandExpression(e.rhs) match {
     case literal: commandexpressions.Literal =>
       predicates.MatchLiteralRegex(toCommandExpression(e.lhs), literal)
@@ -335,24 +339,19 @@ object ExpressionConverters {
   }
 
   private def like(e: ast.Like) = {
-    def stringToRegex(s: Any) =
-      if (s == null) None else Some(patternToRegex(LikePatternParser(s.toString)).r.pattern)
-
-    def patternToRegex(likePattern: ParsedLikePattern): String =
-      convertLikePatternToRegex(likePattern, e.caseInsensitive)
-
     toCommandExpression(e.rhs) match {
       case nullLiteral@commandexpressions.Literal(null) =>
         nullLiteral
 
       case commandexpressions.Literal(v) =>
         val pattern = LikePatternParser(v.asInstanceOf[String])
-        val literal = commandexpressions.Literal(patternToRegex(pattern))
+        val literal = commandexpressions.Literal(convertLikePatternToRegex(pattern, e.caseInsensitive))
         val regularExpression = predicates.MatchLiteralRegex(toCommandExpression(e.lhs), literal)
         predicates.LiteralLikePattern(regularExpression, pattern, e.caseInsensitive)
 
       case command =>
-        predicates.MatchDynamicRegex(toCommandExpression(e.lhs), command)(stringToRegex)
+        val converter = LikeRegexConverter.given(e.caseInsensitive)
+        predicates.MatchDynamicRegex(toCommandExpression(e.lhs), command)(converter)
     }
   }
 
@@ -399,6 +398,8 @@ object ExpressionConverters {
   }
 
   def toCommandProjectedPath(e: ast.PathExpression): ProjectedPath = {
+    import ast._
+
     def project(pathStep: PathStep): Projector = pathStep match {
 
       case NodePathStep(Identifier(node), next) =>
