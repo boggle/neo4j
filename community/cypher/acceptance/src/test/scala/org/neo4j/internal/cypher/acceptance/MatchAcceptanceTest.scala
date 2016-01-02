@@ -1943,9 +1943,9 @@ return b
   test("adding a property and a literal is supported in new runtime") {
     val props = Map("prop" -> 1)
     createNode(props)
-    val result = executeWithAllPlannersAndRuntimes("MATCH (a) RETURN a.prop + 1 AS FOO").toComparableResult
-
-    result should equal(List(Map("FOO" -> 2)))
+    val result = executeWithAllPlannersAndRuntimes("MATCH (a) RETURN a.prop + 1 AS FOO")
+    println(result.executionPlanDescription())
+    result.toComparableResult should equal(List(Map("FOO" -> 2)))
   }
 
   test("adding arrays is supported in new runtime") {
