@@ -21,6 +21,7 @@ package org.neo4j.kernel.impl.api;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.neo4j.collection.RawIterator;
@@ -63,7 +64,6 @@ import org.neo4j.kernel.api.index.IndexDescriptor;
 import org.neo4j.kernel.api.index.InternalIndexState;
 import org.neo4j.kernel.api.proc.Procedure;
 import org.neo4j.kernel.api.proc.ProcedureSignature;
-import org.neo4j.kernel.impl.proc.Procedures;
 import org.neo4j.kernel.api.proc.ProcedureSignature.ProcedureName;
 import org.neo4j.kernel.api.properties.DefinedProperty;
 import org.neo4j.kernel.api.properties.Property;
@@ -78,6 +78,7 @@ import org.neo4j.kernel.impl.api.operations.LockOperations;
 import org.neo4j.kernel.impl.api.operations.SchemaReadOperations;
 import org.neo4j.kernel.impl.api.operations.SchemaStateOperations;
 import org.neo4j.kernel.impl.api.store.RelationshipIterator;
+import org.neo4j.kernel.impl.proc.Procedures;
 import org.neo4j.register.Register.DoubleLongRegister;
 import org.neo4j.storageengine.api.NodeItem;
 import org.neo4j.storageengine.api.RelationshipItem;
@@ -673,6 +674,13 @@ public class OperationsFacade implements ReadOperations, DataWriteOperations, Sc
         Procedure.BasicContext ctx = new Procedure.BasicContext();
         ctx.put( ReadOperations.readStatement, this );
         return procedures.call( ctx, name, input );
+    }
+
+    @Override
+    public Set<ProcedureSignature> proceduresGetAll()
+    {
+        statement.assertOpen();
+        return procedures.getAll();
     }
 
     @Override

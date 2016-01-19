@@ -26,16 +26,16 @@ import org.neo4j.kernel.api.proc.Procedure;
 import org.neo4j.kernel.api.proc.ProcedureSignature.ProcedureName;
 import org.neo4j.storageengine.api.Token;
 
-import static org.neo4j.kernel.api.ReadOperations.readStatement;
-import static org.neo4j.kernel.api.proc.ProcedureSignature.procedureSignature;
 import static org.neo4j.helpers.collection.Iterables.asRawIterator;
 import static org.neo4j.helpers.collection.Iterables.map;
+import static org.neo4j.kernel.api.ReadOperations.readStatement;
+import static org.neo4j.kernel.api.proc.ProcedureSignature.procedureSignature;
 
 public class ListLabelsProcedure extends Procedure.BasicProcedure
 {
     public ListLabelsProcedure( ProcedureName name )
     {
-        super( procedureSignature( name ).out( "label", Neo4jTypes.NTString ).build() );
+        super( procedureSignature( name ).out( name.name(), Neo4jTypes.NTString ).build());
     }
 
     @Override

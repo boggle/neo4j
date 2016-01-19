@@ -42,9 +42,9 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
     // Then
     result.toList should equal(
       List(
-        Map("label" -> "A"),
-        Map("label" -> "B"),
-        Map("label" -> "C")))
+        Map("labels" -> "A"),
+        Map("labels" -> "B"),
+        Map("labels" -> "C")))
   }
 
   test("sys.db.labels work on an empty database") {
@@ -66,7 +66,7 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
 
     // Then
     result.toList should equal(
-      List(Map("label" -> "A")))
+      List(Map("labels" -> "A")))
   }
 
   test("removing all the nodes does not remove labels from label store") {
@@ -79,7 +79,7 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
 
     // Then
     result.toList should equal(
-      List(Map("label" -> "A")))
+      List(Map("labels" -> "A")))
   }
 
   test("should be able to find types from built-in-procedure") {
@@ -262,8 +262,6 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
     // Then
     an [InvalidArgumentException] shouldBe thrownBy(execute("CALL my.first.proc('ten', 10, 42)"))
   }
-
-
 
   test("should fail if implicit argument is missing") {
     // Given
