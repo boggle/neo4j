@@ -28,6 +28,8 @@ import org.neo4j.collection.primitive.PrimitiveIntIterator;
 import org.neo4j.collection.primitive.PrimitiveLongIterator;
 import org.neo4j.cursor.Cursor;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.kernel.api.constraints.NodePropertyConstraint;
 import org.neo4j.kernel.api.constraints.PropertyConstraint;
 import org.neo4j.kernel.api.constraints.RelationshipPropertyConstraint;
@@ -77,6 +79,9 @@ public interface ReadOperations
     /** Returns the labels currently stored in the database * */
     Iterator<Token> labelsGetAllTokens(); // TODO: Token is a store level concern, should not make it this far up the stack
 
+    /** Returns the labels currently in-use in the database * */
+    Iterator<Label> labelsGetAllInUse(  );
+
     /**
      * Returns a property key id for the given property key. If the property key doesn't exist,
      * {@link StatementConstants#NO_SUCH_PROPERTY_KEY} will be returned.
@@ -89,12 +94,20 @@ public interface ReadOperations
     /** Returns the property keys currently stored in the database */
     Iterator<Token> propertyKeyGetAllTokens();
 
+    /** Returns the property keys currently in-use in the database */
+    Iterator<String> propertyKeyGetAllInUse( );
+
     int relationshipTypeGetForName( String relationshipTypeName );
 
     String relationshipTypeGetName( int relationshipTypeId ) throws RelationshipTypeIdNotFoundKernelException;
 
     /** Returns the relationship types currently stored in the database */
     Iterator<Token> relationshipTypesGetAllTokens();
+
+
+    /** Returns the relationship types currently in-use in the database */
+    Iterator<RelationshipType> relationshipTypesGetAllInUse(  );
+
 
     int labelCount();
 

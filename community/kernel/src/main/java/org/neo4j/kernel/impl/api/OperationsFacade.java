@@ -29,6 +29,9 @@ import org.neo4j.collection.primitive.PrimitiveLongCollections;
 import org.neo4j.collection.primitive.PrimitiveLongIterator;
 import org.neo4j.cursor.Cursor;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.kernel.api.DataWriteOperations;
 import org.neo4j.kernel.api.LegacyIndexHits;
 import org.neo4j.kernel.api.ReadOperations;
@@ -791,6 +794,13 @@ public class OperationsFacade implements ReadOperations, DataWriteOperations, Sc
     }
 
     @Override
+    public Iterator<String> propertyKeyGetAllInUse()
+    {
+        statement.assertOpen();
+        return TokenAccess.PROPERTY_KEYS.inUse( statement );
+    }
+
+    @Override
     public Iterator<Token> labelsGetAllTokens()
     {
         statement.assertOpen();
@@ -798,10 +808,24 @@ public class OperationsFacade implements ReadOperations, DataWriteOperations, Sc
     }
 
     @Override
+    public Iterator<Label> labelsGetAllInUse()
+    {
+        statement.assertOpen();
+        return TokenAccess.LABELS.inUse( statement );
+    }
+
+    @Override
     public Iterator<Token> relationshipTypesGetAllTokens()
     {
         statement.assertOpen();
         return tokenRead().relationshipTypesGetAllTokens( statement );
+    }
+
+    @Override
+    public ResourceIterator<RelationshipType> relationshipTypesGetAllInUse()
+    {
+        statement.assertOpen();
+        return TokenAccess.RELATIONSHIP_TYPES.inUse( statement );
     }
 
     @Override
