@@ -35,7 +35,7 @@ public class ListPropertyKeysProcedure extends Procedure.BasicProcedure
 {
     public ListPropertyKeysProcedure( ProcedureSignature.ProcedureName name )
     {
-        super( procedureSignature( name ).out( name.name(), Neo4jTypes.NTString ).build() );
+        super( procedureSignature( name ).out( "propertyKey", Neo4jTypes.NTString ).build() );
     }
 
     @Override

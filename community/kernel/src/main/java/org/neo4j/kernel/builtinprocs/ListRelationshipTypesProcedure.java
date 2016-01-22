@@ -35,7 +35,7 @@ public class ListRelationshipTypesProcedure extends Procedure.BasicProcedure
 {
     public ListRelationshipTypesProcedure( ProcedureSignature.ProcedureName name )
     {
-        super( procedureSignature( name ).out(  name.name(), Neo4jTypes.NTString ).build());
+        super( procedureSignature( name ).out( "relationshipType", Neo4jTypes.NTString ).build());
     }
 
     @Override

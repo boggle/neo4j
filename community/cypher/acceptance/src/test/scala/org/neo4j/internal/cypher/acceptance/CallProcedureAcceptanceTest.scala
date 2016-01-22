@@ -25,7 +25,7 @@ import org.neo4j.kernel.api.KernelAPI
 import org.neo4j.kernel.api.exceptions.ProcedureException
 import org.neo4j.kernel.api.proc.Procedure.Context
 import org.neo4j.kernel.api.proc.ProcedureSignature.procedureSignature
-import org.neo4j.kernel.api.proc.{Neo4jTypes}
+import org.neo4j.kernel.api.proc.Neo4jTypes
 import org.neo4j.kernel.api.proc.Procedure.BasicProcedure
 
 class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
@@ -42,9 +42,9 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
     // Then
     result.toList should equal(
       List(
-        Map("labels" -> "A"),
-        Map("labels" -> "B"),
-        Map("labels" -> "C")))
+        Map("label" -> "A"),
+        Map("label" -> "B"),
+        Map("label" -> "C")))
   }
 
   test("sys.db.labels work on an empty database") {
@@ -66,7 +66,7 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
 
     // Then
     result.toList should equal(
-      List(Map("labels" -> "A")))
+      List(Map("label" -> "A")))
   }
 
   test("removing all the nodes does not remove labels from label store") {
@@ -79,7 +79,7 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
 
     // Then
     result.toList should equal(
-      List(Map("labels" -> "A")))
+      List(Map("label" -> "A")))
   }
 
   test("should be able to find types from built-in-procedure") {
@@ -94,9 +94,9 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
     // Then
     result.toList should equal(
       List(
-        Map("relationshipTypes" -> "A"),
-        Map("relationshipTypes" -> "B"),
-        Map("relationshipTypes" -> "C")))
+        Map("relationshipType" -> "A"),
+        Map("relationshipType" -> "B"),
+        Map("relationshipType" -> "C")))
   }
 
   test("sys.db.relationshipType work on an empty database") {
@@ -122,9 +122,9 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
     // Then
     result.toList should equal(
       List(
-        Map("relationshipTypes" -> "A"),
-        Map("relationshipTypes" -> "B"),
-        Map("relationshipTypes" -> "C")))
+        Map("relationshipType" -> "A"),
+        Map("relationshipType" -> "B"),
+        Map("relationshipType" -> "C")))
   }
 
   test("should be able to find propertyKeys from built-in-procedure") {
@@ -137,9 +137,9 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
     // Then
     result.toList should equal(
       List(
-        Map("propertyKeys" -> "A"),
-        Map("propertyKeys" -> "B"),
-        Map("propertyKeys" -> "C")))
+        Map("propertyKey" -> "A"),
+        Map("propertyKey" -> "B"),
+        Map("propertyKey" -> "C")))
   }
 
   test("sys.db.propertyKeys works on an empty database") {
@@ -163,9 +163,9 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
     // Then
     result.toList should equal(
       List(
-        Map("propertyKeys" -> "A"),
-        Map("propertyKeys" -> "B"),
-        Map("propertyKeys" -> "R")))
+        Map("propertyKey" -> "A"),
+        Map("propertyKey" -> "B"),
+        Map("propertyKey" -> "R")))
   }
 
   test("removing all nodes and relationship does not remove properties from the store") {
@@ -179,9 +179,9 @@ class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
     // Then
     result.toList should equal(
       List(
-        Map("propertyKeys" -> "A"),
-        Map("propertyKeys" -> "B"),
-        Map("propertyKeys" -> "R")))
+        Map("propertyKey" -> "A"),
+        Map("propertyKey" -> "B"),
+        Map("propertyKey" -> "R")))
   }
 
   test("should be able to call procedure with explicit arguments") {

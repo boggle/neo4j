@@ -35,7 +35,7 @@ public class ListLabelsProcedure extends Procedure.BasicProcedure
 {
     public ListLabelsProcedure( ProcedureName name )
     {
-        super( procedureSignature( name ).out( name.name(), Neo4jTypes.NTString ).build());
+        super( procedureSignature( name ).out( "label", Neo4jTypes.NTString ).build());
     }
 
     @Override
