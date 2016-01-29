@@ -99,6 +99,7 @@ final class TransactionBoundQueryContext(graph: GraphDatabaseAPI,
     }
   }
 
+
   def createNode(): Node =
     graph.createNode()
 

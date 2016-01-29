@@ -23,7 +23,7 @@ import java.io.{File, FileWriter}
 import java.text.NumberFormat
 import java.util.{Date, Locale}
 
-import org.neo4j.cypher.internal.compatibility.{EntityAccessorWrapper2_3, WrappedMonitors2_3}
+import org.neo4j.cypher.internal.compatibility.{CompatibilityFor2_3, EntityAccessorWrapper2_3, WrappedMonitors2_3}
 import org.neo4j.cypher.internal.compiler.v2_3.executionplan._
 import org.neo4j.cypher.internal.compiler.v2_3.planDescription.InternalPlanDescription
 import org.neo4j.cypher.internal.compiler.v2_3.planner._
@@ -34,7 +34,7 @@ import org.neo4j.cypher.internal.frontend.v2_3.ast.Statement
 import org.neo4j.cypher.internal.frontend.v2_3.parser.CypherParser
 import org.neo4j.cypher.internal.spi.v2_3.{GeneratedQueryStructure, TransactionBoundPlanContext, TransactionBoundQueryContext}
 import org.neo4j.cypher.{ExecutionEngineFunSuite, NewPlannerTestSupport, QueryStatisticsTestSupport}
-import org.neo4j.graphdb.{Relationship, Node, GraphDatabaseService}
+import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.factory.GraphDatabaseFactory
 import org.neo4j.helpers.Clock
 import org.neo4j.kernel.GraphDatabaseAPI
@@ -544,7 +544,7 @@ class CompilerComparisonTest extends ExecutionEngineFunSuite with QueryStatistic
 
     db.withTx {
       tx =>
-        val queryContext = new TransactionBoundQueryContext(db, tx, true, db.statement)(indexSearchMonitor)
+        val queryContext = new TransactionBoundQueryContext(db, CompatibilityFor2_3.DefaultIdValueAccess, tx, true, db.statement)(indexSearchMonitor)
         val result = plan.run(queryContext, statement, ProfileMode, parameters)
         (result.toList, result)
     }

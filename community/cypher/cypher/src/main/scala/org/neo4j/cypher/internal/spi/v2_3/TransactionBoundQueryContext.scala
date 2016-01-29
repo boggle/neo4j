@@ -24,6 +24,7 @@ import java.net.URL
 import org.neo4j.collection.primitive.PrimitiveLongIterator
 import org.neo4j.collection.primitive.base.Empty.EMPTY_PRIMITIVE_LONG_COLLECTION
 import org.neo4j.cypher.InternalException
+import org.neo4j.cypher.internal.compatibility.CompatibilityFor2_3
 import org.neo4j.cypher.internal.compiler.v2_3.MinMaxOrdering.{BY_NUMBER, BY_STRING, BY_VALUE}
 import org.neo4j.cypher.internal.compiler.v2_3._
 import org.neo4j.cypher.internal.compiler.v2_3.ast.convert.commands.DirectionConverter.toGraphDb
@@ -56,6 +57,7 @@ import scala.collection.JavaConverters._
 import scala.collection.{Iterator, mutable}
 
 final class TransactionBoundQueryContext(graph: GraphDatabaseAPI,
+                                         val idValueAccess: IdValueAccess[Long],
                                          var tx: Transaction,
                                          val isTopLevelTx: Boolean,
                                          initialStatement: Statement)(implicit indexSearchMonitor: IndexSearchMonitor)
@@ -99,7 +101,7 @@ final class TransactionBoundQueryContext(graph: GraphDatabaseAPI,
       try {
         val otherStatement = txBridge.get()
         val result = try {
-          work(new TransactionBoundQueryContext(graph, tx, isTopLevelTx, otherStatement))
+          work(new TransactionBoundQueryContext(graph, idValueAccess, tx, isTopLevelTx, otherStatement))
         }
         finally {
           otherStatement.close()
@@ -112,6 +114,12 @@ final class TransactionBoundQueryContext(graph: GraphDatabaseAPI,
       }
     }
   }
+
+  def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long =
+   idValueAccess.extractIdValueFrom(v, otherwise)
+
+  def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long =
+    idValueAccess.coerceAsIdValue(v, otherwise)
 
   def createNode(): Node =
     graph.createNode()

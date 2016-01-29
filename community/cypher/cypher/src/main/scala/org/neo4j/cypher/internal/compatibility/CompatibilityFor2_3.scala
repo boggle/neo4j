@@ -22,6 +22,7 @@ package org.neo4j.cypher.internal.compatibility
 import java.io.PrintWriter
 import java.util
 
+import org.neo4j.cypher.internal.compiler.v2_3.spi.IdValueAccess
 import org.neo4j.cypher.{QueryStatistics, _}
 import org.neo4j.cypher.internal._
 import org.neo4j.cypher.internal.compiler.v2_3
@@ -138,6 +139,22 @@ case class WrappedMonitors2_3(kernelMonitors: KernelMonitors) extends Monitors {
   }
 }
 
+object CompatibilityFor2_3 {
+  object DefaultIdValueAccess extends IdValueAccess[Long] {
+
+    override def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long = v match {
+      case n: Node => n.getId
+      case r: Relationship => r.getId
+      case other => otherwise(other)
+    }
+
+    override def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long = v match {
+      case l: Long => l
+      case other => otherwise(other)
+    }
+  }
+}
+
 trait CompatibilityFor2_3 {
   import org.neo4j.cypher.internal.compatibility.helpers._
 
@@ -185,7 +202,7 @@ trait CompatibilityFor2_3 {
 
     private def queryContext(graph: GraphDatabaseAPI, txInfo: TransactionInfo) = {
       val searchMonitor: IndexSearchMonitor = kernelMonitors.newMonitor(classOf[IndexSearchMonitor])
-      val ctx = new TransactionBoundQueryContext(graph, txInfo.tx, txInfo.isTopLevelTx, txInfo.statement)(searchMonitor)
+      val ctx = new TransactionBoundQueryContext(graph, CompatibilityFor2_3.DefaultIdValueAccess, txInfo.tx, txInfo.isTopLevelTx, txInfo.statement)(searchMonitor)
       new ExceptionTranslatingQueryContextFor2_3(ctx)
     }
 

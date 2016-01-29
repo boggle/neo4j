@@ -31,6 +31,13 @@ import org.neo4j.kernel.api.exceptions.KernelException
 import org.neo4j.kernel.api.index.IndexDescriptor
 
 class ExceptionTranslatingQueryContextFor2_3(inner: QueryContext) extends DelegatingQueryContext(inner) {
+
+  override def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long =
+    translateException(inner.extractIdValueFrom(v, otherwise))
+
+  override def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long =
+    translateException(inner.coerceAsIdValue(v, otherwise))
+
   override def setLabelsOnNode(node: Long, labelIds: Iterator[Int]): Int =
     translateException(super.setLabelsOnNode(node, labelIds))
 
@@ -159,6 +166,7 @@ class ExceptionTranslatingQueryContextFor2_3(inner: QueryContext) extends Delega
 
   class ExceptionTranslatingOperations[T <: PropertyContainer](inner: Operations[T])
     extends DelegatingOperations[T](inner) {
+
     override def delete(obj: T) =
       translateException(super.delete(obj))
 

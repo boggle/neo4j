@@ -23,6 +23,7 @@ import java.net.URL
 
 import org.mockito.Mockito._
 import org.neo4j.cypher.internal.compiler.v2_3.helpers.DynamicIterable
+import org.neo4j.cypher.internal.compiler.v2_3.spi.IdValueAccess
 import org.neo4j.cypher.internal.frontend.v2_3.SemanticDirection
 import org.neo4j.cypher.internal.frontend.v2_3.test_helpers.CypherFunSuite
 import org.neo4j.cypher.internal.spi.v2_3.TransactionBoundQueryContext.IndexSearchMonitor
@@ -56,7 +57,7 @@ class TransactionBoundQueryContextTest extends CypherFunSuite {
   test ("should_mark_transaction_successful_if_successful") {
     // GIVEN
     when (outerTx.failure () ).thenThrow (new AssertionError ("Shouldn't be called") )
-    val context = new TransactionBoundQueryContext(graph, outerTx, isTopLevelTx = true, statement)(indexSearchMonitor)
+    val context = new TransactionBoundQueryContext(graph, mock[IdValueAccess[Long]], outerTx, isTopLevelTx = true, statement)(indexSearchMonitor)
 
     // WHEN
     context.close(success = true)
@@ -70,7 +71,7 @@ class TransactionBoundQueryContextTest extends CypherFunSuite {
   test ("should_mark_transaction_failed_if_not_successful") {
     // GIVEN
     when (outerTx.success () ).thenThrow (new AssertionError ("Shouldn't be called") )
-    val context = new TransactionBoundQueryContext(graph, outerTx, isTopLevelTx = true, statement)(indexSearchMonitor)
+    val context = new TransactionBoundQueryContext(graph, mock[IdValueAccess[Long]], outerTx, isTopLevelTx = true, statement)(indexSearchMonitor)
 
     // WHEN
     context.close(success = false)
@@ -88,7 +89,7 @@ class TransactionBoundQueryContextTest extends CypherFunSuite {
 
     val tx = graph.beginTx()
     val stmt = graph.getDependencyResolver.resolveDependency(classOf[ThreadToStatementContextBridge]).get()
-    val context = new TransactionBoundQueryContext(graph, tx, isTopLevelTx = true, stmt)(indexSearchMonitor)
+    val context = new TransactionBoundQueryContext(graph, mock[IdValueAccess[Long]], tx, isTopLevelTx = true, stmt)(indexSearchMonitor)
 
     // WHEN
     val iterable = DynamicIterable( context.getRelationshipsForIds(node, SemanticDirection.BOTH, None) )
@@ -108,7 +109,7 @@ class TransactionBoundQueryContextTest extends CypherFunSuite {
     // GIVEN
     val tx = graph.beginTx()
     val stmt = graph.getDependencyResolver.resolveDependency(classOf[ThreadToStatementContextBridge]).get()
-    val context = new TransactionBoundQueryContext(graph, tx, isTopLevelTx = true, stmt)(indexSearchMonitor)
+    val context = new TransactionBoundQueryContext(graph, mock[IdValueAccess[Long]], tx, isTopLevelTx = true, stmt)(indexSearchMonitor)
 
     // THEN
     context.getImportURL(new URL("http://localhost:7474/data.csv")) should equal (Right(new URL("http://localhost:7474/data.csv")))
@@ -125,7 +126,7 @@ class TransactionBoundQueryContextTest extends CypherFunSuite {
     graph = new ImpermanentGraphDatabase(Map(GraphDatabaseSettings.allow_file_urls.name() -> "false").asJava)
     val tx = graph.beginTx()
     val stmt = graph.getDependencyResolver.resolveDependency(classOf[ThreadToStatementContextBridge]).get()
-    val context = new TransactionBoundQueryContext(graph, tx, isTopLevelTx = true, stmt)(indexSearchMonitor)
+    val context = new TransactionBoundQueryContext(graph, mock[IdValueAccess[Long]], tx, isTopLevelTx = true, stmt)(indexSearchMonitor)
 
     // THEN
     context.getImportURL(new URL("http://localhost:7474/data.csv")) should equal (Right(new URL("http://localhost:7474/data.csv")))

@@ -19,6 +19,7 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_3
 
+import org.neo4j.cypher.internal.compatibility.CompatibilityFor2_3
 import org.neo4j.cypher.internal.compiler.v2_3.pipes.{ExternalResource, NullPipeDecorator, PipeDecorator, QueryState}
 import org.neo4j.cypher.internal.compiler.v2_3.spi.{QueryContext, UpdateCountingQueryContext}
 import org.neo4j.cypher.internal.spi.v2_3.TransactionBoundQueryContext
@@ -39,7 +40,7 @@ object QueryStateHelper {
   def queryStateFrom(db: GraphDatabaseAPI, tx: Transaction, params: Map[String, Any] = Map.empty): QueryState = {
     val statement: Statement = db.getDependencyResolver.resolveDependency(classOf[ThreadToStatementContextBridge]).get()
     val searchMonitor = new KernelMonitors().newMonitor(classOf[IndexSearchMonitor])
-    val context = new TransactionBoundQueryContext(db, tx, isTopLevelTx = true, statement)(searchMonitor)
+    val context = new TransactionBoundQueryContext(db, CompatibilityFor2_3.DefaultIdValueAccess, tx, isTopLevelTx = true, statement)(searchMonitor)
     emptyWith(db = db, query = context, params = params)
   }
 

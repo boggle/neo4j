@@ -24,7 +24,7 @@ import java.util.concurrent._
 import org.junit.Assert._
 import org.mockito.Mockito._
 import org.neo4j.cypher.GraphDatabaseTestSupport
-import org.neo4j.cypher.internal.compatibility.WrappedMonitors2_3
+import org.neo4j.cypher.internal.compatibility.{CompatibilityFor2_3, WrappedMonitors2_3}
 import org.neo4j.cypher.internal.compiler.v2_2.Rewriter
 import org.neo4j.cypher.internal.compiler.v2_3.commands.expressions.{Identifier, Literal}
 import org.neo4j.cypher.internal.compiler.v2_3.commands.predicates.HasLabel
@@ -109,7 +109,7 @@ class RuleExecutablePlanBuilderTest
         .returns(ReturnItem(Identifier("x"), "x"))
 
       val pipeBuilder = new LegacyExecutablePlanBuilder(new WrappedMonitors2_3(kernelMonitors), RewriterStepSequencer.newValidating)
-      val queryContext = new TransactionBoundQueryContext(graph, tx, isTopLevelTx = true, statement)(indexSearchMonitor)
+      val queryContext = new TransactionBoundQueryContext(graph, CompatibilityFor2_3.DefaultIdValueAccess, tx, isTopLevelTx = true, statement)(indexSearchMonitor)
       val pkId = queryContext.getPropertyKeyId("foo")
       val parsedQ = new FakePreparedQuery(q)
 
@@ -135,7 +135,7 @@ class RuleExecutablePlanBuilderTest
         .returns(ReturnItem(Identifier("x"), "x"))
 
       val execPlanBuilder = new LegacyExecutablePlanBuilder(new WrappedMonitors2_3(kernelMonitors), RewriterStepSequencer.newValidating)
-      val queryContext = new TransactionBoundQueryContext(graph, tx, isTopLevelTx = true, statement)(indexSearchMonitor)
+      val queryContext = new TransactionBoundQueryContext(graph, CompatibilityFor2_3.DefaultIdValueAccess, tx, isTopLevelTx = true, statement)(indexSearchMonitor)
       val labelId = queryContext.getLabelId("Person")
       val parsedQ = new FakePreparedQuery(q)
 

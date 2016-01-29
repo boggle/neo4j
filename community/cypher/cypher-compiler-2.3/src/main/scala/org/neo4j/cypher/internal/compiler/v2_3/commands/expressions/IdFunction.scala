@@ -27,11 +27,12 @@ import org.neo4j.cypher.internal.frontend.v2_3.symbols._
 import org.neo4j.graphdb.{Node, Relationship}
 
 case class IdFunction(inner: Expression) extends NullInNullOutExpression(inner) {
-  def compute(value: Any, m: ExecutionContext)(implicit state: QueryState) = value match {
-    case node: Node        => node.getId
-    case rel: Relationship => rel.getId
-    case x => throw new CypherTypeException("Expected `%s` to be a node or relationship, but it was ``".format(inner, x.getClass.getSimpleName))
-  }
+  def compute(value: Any, m: ExecutionContext)(implicit state: QueryState) =
+    state.query.extractIdValueFrom(
+      value,
+      x => throw new CypherTypeException(
+        "Expected `%s` to be a node or relationship, but it was `%s`".format(inner, x.getClass.getSimpleName))
+    )
 
   def rewrite(f: (Expression) => Expression) = f(IdFunction(inner.rewrite(f)))
 

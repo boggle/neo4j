@@ -26,7 +26,7 @@ import org.neo4j.cypher.internal.compiler.v2_3.commands.expressions.{KernelPredi
 import org.neo4j.cypher.internal.compiler.v2_3.commands.values.{KeyToken, TokenType}
 import org.neo4j.cypher.internal.compiler.v2_3.commands.{LabelAction, LabelSetOp}
 import org.neo4j.cypher.internal.compiler.v2_3.pipes.matching.PatternNode
-import org.neo4j.cypher.internal.compiler.v2_3.spi.{IdempotentResult, LockingQueryContext, QueryContext}
+import org.neo4j.cypher.internal.compiler.v2_3.spi.{IdValueAccess, IdempotentResult, LockingQueryContext, QueryContext}
 import org.neo4j.cypher.internal.frontend.v2_3.SemanticDirection
 import org.neo4j.graphdb.{PropertyContainer, Path, Node, Relationship}
 import org.neo4j.kernel.api.constraints.{NodePropertyExistenceConstraint, UniquenessConstraint}
@@ -80,6 +80,10 @@ class SnitchingQueryContext extends QueryContext {
     ids = input.toSeq
     ids.size
   }
+
+  def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long = ???
+
+  def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long = ???
 
   def isOpen: Boolean = ???
 

@@ -41,7 +41,8 @@ import org.neo4j.kernel.api.index.IndexDescriptor
  * The driver for this was clarifying who is responsible for ensuring query isolation. By exposing a query concept in
  * the core layer, we can move that responsibility outside of the scope of cypher.
  */
-trait QueryContext extends TokenContext {
+trait QueryContext extends TokenContext with IdValueAccess[Long] {
+
   def nodeOps: Operations[Node]
 
   def relationshipOps: Operations[Relationship]
@@ -148,6 +149,14 @@ trait QueryContext extends TokenContext {
 
 trait LockingQueryContext extends QueryContext {
   def releaseLocks()
+}
+
+trait IdValueAccess[I] {
+  // "what the id function does"
+  def extractIdValueFrom(v: Any, otherwise: Any => I): I
+
+  // TODO: "what we do to the rhs in id(x) = rhs"
+  def coerceAsIdValue(v: Any, otherwise: Any => I): I
 }
 
 trait Operations[T <: PropertyContainer] {

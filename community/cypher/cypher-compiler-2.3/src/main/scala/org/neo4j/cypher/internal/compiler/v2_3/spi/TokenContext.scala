@@ -30,3 +30,4 @@ trait TokenContext {
   def getOptRelTypeId(relType: String): Option[Int]
   def getRelTypeId(relType: String): Int
 }
+
