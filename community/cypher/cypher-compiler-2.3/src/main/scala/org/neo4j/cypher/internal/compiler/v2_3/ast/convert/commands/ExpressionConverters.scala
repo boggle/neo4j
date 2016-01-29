@@ -250,6 +250,8 @@ object ExpressionConverters {
     case e: ast.IsNull => predicates.IsNull(toCommandExpression(e.lhs))
     case e: ast.IsNotNull => predicates.Not(predicates.IsNull(toCommandExpression(e.lhs)))
     case e: ast.InequalityExpression => inequalityExpression(e)
+    case e: ast.IdentityId => commandexpressions.IdentityId(toCommandExpression(e.expr))
+    case e: ast.IdentityIds => commandexpressions.IdentityIds(toCommandExpression(e.expr))
     case e: ast.Add => commandexpressions.Add(toCommandExpression(e.lhs), toCommandExpression(e.rhs))
     case e: ast.UnaryAdd => toCommandExpression(e.rhs)
     case e: ast.Subtract => commandexpressions.Subtract(toCommandExpression(e.lhs), toCommandExpression(e.rhs))

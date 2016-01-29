@@ -20,6 +20,7 @@
 package org.neo4j.cypher.internal.compiler.v2_3.commands.expressions
 
 import org.neo4j.cypher.internal.compiler.v2_3._
+import org.neo4j.cypher.internal.compiler.v2_3.helpers.IsCollection
 import org.neo4j.cypher.internal.compiler.v2_3.pipes.QueryState
 import org.neo4j.cypher.internal.compiler.v2_3.symbols.SymbolTable
 import org.neo4j.cypher.internal.frontend.v2_3.CypherTypeException
@@ -28,7 +29,7 @@ import org.neo4j.graphdb.{Node, Relationship}
 
 case class IdFunction(inner: Expression) extends NullInNullOutExpression(inner) {
   def compute(value: Any, m: ExecutionContext)(implicit state: QueryState) =
-    state.query.extractIdValueFrom(
+    state.query.entityId(
       value,
       x => throw new CypherTypeException(
         "Expected `%s` to be a node or relationship, but it was `%s`".format(inner, x.getClass.getSimpleName))
@@ -39,6 +40,34 @@ case class IdFunction(inner: Expression) extends NullInNullOutExpression(inner) 
   def arguments = Seq(inner)
 
   def calculateType(symbols: SymbolTable): CypherType = CTInteger
+
+  def symbolTableDependencies = inner.symbolTableDependencies
+}
+
+case class IdentityId(inner: Expression) extends NullInNullOutExpression(inner) {
+  def compute(value: Any, m: ExecutionContext)(implicit state: QueryState) =
+    state.query.identityId(value, identity)
+
+  def rewrite(f: (Expression) => Expression) = f(IdentityId(inner.rewrite(f)))
+
+  def arguments = Seq(inner)
+
+  def calculateType(symbols: SymbolTable): CypherType = CTAny
+
+  def symbolTableDependencies = inner.symbolTableDependencies
+}
+
+case class IdentityIds(inner: Expression) extends NullInNullOutExpression(inner) {
+  def compute(value: Any, m: ExecutionContext)(implicit state: QueryState) = value match {
+      case IsCollection(coll) => coll.map(state.query.identityId(_, identity))
+      case other => other
+  }
+
+  def rewrite(f: (Expression) => Expression) = f(IdentityId(inner.rewrite(f)))
+
+  def arguments = Seq(inner)
+
+  def calculateType(symbols: SymbolTable): CypherType = CTCollection(CTAny)
 
   def symbolTableDependencies = inner.symbolTableDependencies
 }

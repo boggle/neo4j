@@ -32,11 +32,11 @@ import org.neo4j.kernel.api.index.IndexDescriptor
 
 class ExceptionTranslatingQueryContextFor2_3(inner: QueryContext) extends DelegatingQueryContext(inner) {
 
-  override def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long =
-    translateException(inner.extractIdValueFrom(v, otherwise))
+  override def entityId(v: Any, otherwise: (Any) => Long): Long =
+    translateException(inner.entityId(v, otherwise))
 
-  override def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long =
-    translateException(inner.coerceAsIdValue(v, otherwise))
+  override def identityId[S >: Long](v: Any, otherwise: Any => S): S =
+    translateException(inner.identityId(v, otherwise))
 
   override def setLabelsOnNode(node: Long, labelIds: Iterator[Int]): Int =
     translateException(super.setLabelsOnNode(node, labelIds))

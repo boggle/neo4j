@@ -142,13 +142,13 @@ case class WrappedMonitors2_3(kernelMonitors: KernelMonitors) extends Monitors {
 object CompatibilityFor2_3 {
   object DefaultIdValueAccess extends IdValueAccess[Long] {
 
-    override def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long = v match {
+    override def entityId(v: Any, otherwise: (Any) => Long): Long = v match {
       case n: Node => n.getId
       case r: Relationship => r.getId
       case other => otherwise(other)
     }
 
-    override def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long = v match {
+    override def identityId[S >: Long](v: Any, otherwise: Any => S): S = v match {
       case l: Long => l
       case other => otherwise(other)
     }

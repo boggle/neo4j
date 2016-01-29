@@ -115,11 +115,11 @@ final class TransactionBoundQueryContext(graph: GraphDatabaseAPI,
     }
   }
 
-  def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long =
-   idValueAccess.extractIdValueFrom(v, otherwise)
+  def entityId(v: Any, otherwise: (Any) => Long): Long =
+   idValueAccess.entityId(v, otherwise)
 
-  def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long =
-    idValueAccess.coerceAsIdValue(v, otherwise)
+  def identityId[S >: Long](v: Any, otherwise: Any => S): S =
+    idValueAccess.identityId(v, otherwise)
 
   def createNode(): Node =
     graph.createNode()

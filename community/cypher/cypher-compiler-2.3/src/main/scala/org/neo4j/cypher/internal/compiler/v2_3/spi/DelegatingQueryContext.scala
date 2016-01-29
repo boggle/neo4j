@@ -32,11 +32,11 @@ class DelegatingQueryContext(inner: QueryContext) extends QueryContext {
   protected def singleDbHit[A](value: A): A = value
   protected def manyDbHits[A](value: Iterator[A]): Iterator[A] = value
 
-  def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long =
-    inner.extractIdValueFrom(v, otherwise)
+  def entityId(v: Any, otherwise: (Any) => Long): Long =
+    inner.entityId(v, otherwise)
 
-  def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long =
-    inner.coerceAsIdValue(v, otherwise)
+  def identityId[S >: Long](v: Any, otherwise: Any => S): S =
+    inner.identityId(v, otherwise)
 
   def isOpen: Boolean = inner.isOpen
 

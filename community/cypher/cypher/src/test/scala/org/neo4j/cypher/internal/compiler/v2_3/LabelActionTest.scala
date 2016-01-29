@@ -81,9 +81,9 @@ class SnitchingQueryContext extends QueryContext {
     ids.size
   }
 
-  def extractIdValueFrom(v: Any, otherwise: (Any) => Long): Long = ???
+  def entityId(v: Any, otherwise: (Any) => Long): Long = ???
 
-  def coerceAsIdValue(v: Any, otherwise: (Any) => Long): Long = ???
+  def identityId[S >: Long](v: Any, otherwise: Any => S): S = ???
 
   def isOpen: Boolean = ???
 

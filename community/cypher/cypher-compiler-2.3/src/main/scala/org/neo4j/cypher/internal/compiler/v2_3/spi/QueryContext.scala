@@ -153,10 +153,10 @@ trait LockingQueryContext extends QueryContext {
 
 trait IdValueAccess[I] {
   // "what the id function does"
-  def extractIdValueFrom(v: Any, otherwise: Any => I): I
+  def entityId(v: Any, otherwise: Any => I): I
 
-  // TODO: "what we do to the rhs in id(x) = rhs"
-  def coerceAsIdValue(v: Any, otherwise: Any => I): I
+  // "what we do to the rhs in `WHERE id(x) = rhs`"
+  def identityId[S >: I](v: Any, otherwise: Any => S): S
 }
 
 trait Operations[T <: PropertyContainer] {
