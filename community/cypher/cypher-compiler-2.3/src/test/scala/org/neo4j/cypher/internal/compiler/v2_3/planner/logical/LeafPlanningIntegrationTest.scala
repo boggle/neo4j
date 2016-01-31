@@ -326,7 +326,7 @@ class LeafPlanningIntegrationTest extends CypherFunSuite with LogicalPlanningTes
     } planFor "MATCH (n:Awesome) WHERE id(n) = 42 RETURN n").plan should equal (
       Selection(
         List(HasLabels(Identifier("n")_, Seq(LabelName("Awesome")_))_),
-        NodeByIdSeek("n", ManySeekableArgs(Collection(Seq(SignedDecimalIntegerLiteral("42")_))_), Set.empty)(solved)
+        NodeByIdSeek("n", ManySeekableArgs(Collection(Seq(IdentityId(SignedDecimalIntegerLiteral("42")_)_))_), Set.empty)(solved)
       )(solved)
     )
   }
@@ -337,7 +337,7 @@ class LeafPlanningIntegrationTest extends CypherFunSuite with LogicalPlanningTes
     } planFor "MATCH (n:Awesome) WHERE id(n) IN {param} RETURN n").plan should equal (
       Selection(
         List(HasLabels(Identifier("n")_, Seq(LabelName("Awesome")_))_),
-        NodeByIdSeek("n", ManySeekableArgs(Parameter("param")_), Set.empty)(solved)
+        NodeByIdSeek("n", ManySeekableArgs(IdentityIds(Parameter("param")_)_), Set.empty)(solved)
       )(solved)
     )
   }
@@ -345,14 +345,14 @@ class LeafPlanningIntegrationTest extends CypherFunSuite with LogicalPlanningTes
   test("should plan directed rel by ID lookup based on an IN predicate with a param as the rhs") {
     (new given {
     } planFor "MATCH (a)-[r]->(b) WHERE id(r) IN {param} RETURN a, r, b").plan should equal (
-      DirectedRelationshipByIdSeek("r", ManySeekableArgs(Parameter("param")_), "a", "b", Set.empty)(solved)
+      DirectedRelationshipByIdSeek("r", ManySeekableArgs(IdentityIds(Parameter("param")_)_), "a", "b", Set.empty)(solved)
     )
   }
 
   test("should plan undirected rel by ID lookup based on an IN predicate with a param as the rhs") {
     (new given {
     } planFor "MATCH (a)-[r]-(b) WHERE id(r) IN {param} RETURN a, r, b").plan should equal (
-      UndirectedRelationshipByIdSeek("r", ManySeekableArgs(Parameter("param")_), "a", "b", Set.empty)(solved)
+      UndirectedRelationshipByIdSeek("r", ManySeekableArgs(IdentityIds(Parameter("param")_)_), "a", "b", Set.empty)(solved)
     )
   }
 
@@ -362,7 +362,7 @@ class LeafPlanningIntegrationTest extends CypherFunSuite with LogicalPlanningTes
     } planFor "MATCH (n:Awesome) WHERE id(n) IN [42, 64] RETURN n").plan should equal (
       Selection(
         List(HasLabels(Identifier("n")_, Seq(LabelName("Awesome")_))_),
-        NodeByIdSeek("n", ManySeekableArgs(Collection(Seq(SignedDecimalIntegerLiteral("42")_, SignedDecimalIntegerLiteral("64")_))_), Set.empty)(solved)
+        NodeByIdSeek("n", ManySeekableArgs(Collection(Seq(IdentityId(SignedDecimalIntegerLiteral("42")_)_, IdentityId(SignedDecimalIntegerLiteral("64")_)_))_), Set.empty)(solved)
       )(solved)
     )
   }
@@ -512,7 +512,7 @@ class LeafPlanningIntegrationTest extends CypherFunSuite with LogicalPlanningTes
       Aggregation(
         Apply(
           Projection(SingleRow()(solved),Map("arr" -> Collection(List(SignedDecimalIntegerLiteral("0")_, SignedDecimalIntegerLiteral("1")_, SignedDecimalIntegerLiteral("3")_))_))(solved),
-          NodeByIdSeek(IdName("n"), ManySeekableArgs(Identifier("arr")_),Set(IdName("arr")))(solved)
+          NodeByIdSeek(IdName("n"), ManySeekableArgs(IdentityIds(Identifier("arr")_)_),Set(IdName("arr")))(solved)
         )(solved),
         Map(), Map("count(*)" -> CountStar()_)
       )(solved)

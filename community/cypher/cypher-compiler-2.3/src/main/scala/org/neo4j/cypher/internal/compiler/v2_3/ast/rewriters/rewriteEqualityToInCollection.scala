@@ -19,9 +19,8 @@
  */
 package org.neo4j.cypher.internal.compiler.v2_3.ast.rewriters
 
-import org.neo4j.cypher.internal.compiler.v2_3._
 import org.neo4j.cypher.internal.frontend.v2_3.ast._
-import org.neo4j.cypher.internal.frontend.v2_3.{bottomUp, Rewriter}
+import org.neo4j.cypher.internal.frontend.v2_3.{Rewriter, bottomUp}
 
 /*
 This class rewrites equality predicates into IN comparisons which can then be turned into
@@ -36,7 +35,7 @@ case object rewriteEqualityToInCollection extends Rewriter {
   private val instance: Rewriter = Rewriter.lift {
     // id(a) = value => id(a) IN [value]
     case predicate@Equals(func@FunctionInvocation(_, _, IndexedSeq(idExpr)), idValueExpr)
-      if func.function == Some(functions.Id) =>
+      if func.function.contains(functions.Id) =>
       In(func, Collection(Seq(idValueExpr))(idValueExpr.position))(predicate.position)
 
     // a.prop = value => a.prop IN [value]
@@ -44,3 +43,5 @@ case object rewriteEqualityToInCollection extends Rewriter {
       In(prop, Collection(Seq(idValueExpr))(idValueExpr.position))(predicate.position)
   }
 }
+
+

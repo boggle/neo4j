@@ -150,7 +150,7 @@ class StatementConvertersTest extends CypherFunSuite with LogicalPlanningTestSup
     query.graph.selections should equal(Selections(Set(
       Predicate(Set(IdName("n")), In(
         FunctionInvocation(FunctionName("id")_, distinct = false, Vector(Identifier("n")(pos)))(pos),
-        Collection(Seq(SignedDecimalIntegerLiteral("42")_))_
+        Collection(Seq(IdentityId(SignedDecimalIntegerLiteral("42")_)_))_
       )_
       ))))
 
@@ -166,7 +166,7 @@ class StatementConvertersTest extends CypherFunSuite with LogicalPlanningTestSup
     query.graph.selections should equal(Selections(Set(
       Predicate(Set(IdName("n")), In(
         FunctionInvocation(FunctionName("id")_, distinct = false, Vector(Identifier("n")(pos)))(pos),
-        Collection(Seq(lit42, lit43))_
+        Collection(Seq(IdentityId(lit42)_, IdentityId(lit43)_))_
       )_
       ))))
 
@@ -183,7 +183,7 @@ class StatementConvertersTest extends CypherFunSuite with LogicalPlanningTestSup
       Predicate(Set(IdName("n")), HasLabels(nIdent, Seq(A))_),
       Predicate(Set(IdName("n")), In(
         FunctionInvocation(FunctionName("id")_, distinct = false, Vector(Identifier("n")(pos)))(pos),
-        Collection(Seq(SignedDecimalIntegerLiteral("42")_))_
+        Collection(Seq(IdentityId(SignedDecimalIntegerLiteral("42")_)_))_
       )_
       ))))
 
@@ -667,7 +667,7 @@ class StatementConvertersTest extends CypherFunSuite with LogicalPlanningTestSup
     tailQg.graph.selections.predicates should equal(Set(
       Predicate(
         Set(IdName("b"), IdName("property")),
-        In(FunctionInvocation(FunctionName("id") _, Identifier("b") _) _, Collection(Seq(Identifier("property")(pos))) _) _
+        In(FunctionInvocation(FunctionName("id") _, Identifier("b") _) _, Collection(Seq(IdentityId(Identifier("property")(pos))_)) _) _
       )
     ))
 
@@ -692,7 +692,7 @@ class StatementConvertersTest extends CypherFunSuite with LogicalPlanningTestSup
     secondQuery.graph.selections.predicates should equal(Set(
       Predicate(
         Set(IdName("b"), IdName("property")),
-        In(FunctionInvocation(FunctionName("id") _, Identifier("b") _) _, Collection(Seq(Identifier("property")(pos))) _) _
+        In(FunctionInvocation(FunctionName("id") _, Identifier("b") _) _, Collection(Seq(IdentityId(Identifier("property")(pos))_)) _) _
       )))
 
     secondQuery.horizon should equal(
@@ -718,7 +718,7 @@ class StatementConvertersTest extends CypherFunSuite with LogicalPlanningTestSup
     tailQg.graph.selections.predicates should equal(Set(
       Predicate(
         Set(IdName("b"), IdName("property")),
-        In(FunctionInvocation(FunctionName("id") _, Identifier("b") _) _, Collection(Seq(Identifier("property") _)) _) _
+        In(FunctionInvocation(FunctionName("id") _, Identifier("b") _) _, Collection(Seq(IdentityId(Identifier("property")_)_)) _) _
       )
     ))
 

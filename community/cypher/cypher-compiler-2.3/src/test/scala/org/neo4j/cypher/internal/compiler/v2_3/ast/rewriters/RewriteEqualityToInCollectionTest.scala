@@ -69,8 +69,4 @@ class RewriteEqualityToInCollectionTest extends CypherFunSuite with AstRewriting
 
     result should equal(expected)
   }
-
-  private def shouldNotRewrite(q: String) {
-    shouldRewrite(q, q)
-  }
 }

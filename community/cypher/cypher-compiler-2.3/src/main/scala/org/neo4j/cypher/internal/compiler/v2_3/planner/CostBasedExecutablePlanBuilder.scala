@@ -112,6 +112,7 @@ object CostBasedExecutablePlanBuilder {
     val namespacedStatement = statementRewriter.rewriteStatement(statement)(
       ApplyRewriter("Namespacer", namespacer.statementRewriter),
       rewriteEqualityToInCollection,
+      rewriteIdInCollectionRhs,
       CNFNormalizer()(monitor)
     )
 
