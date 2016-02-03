@@ -26,7 +26,7 @@ import org.neo4j.cypher.internal.frontend.v3_0.notification.CartesianProductNoti
 import org.neo4j.cypher.internal.frontend.v3_0.spi.ProcedureSignature
 import org.neo4j.cypher.internal.frontend.v3_0.symbols._
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 sealed trait Clause extends ASTNode with ASTPhrase with SemanticCheckable {
   def name: String
@@ -296,16 +296,26 @@ abstract class CallClause extends Clause {
   override def name = "CALL"
 
   def call: ProcedureCall
+}
+
+case class UnresolvedCall(call: ProcedureCall)(val position: InputPosition) extends CallClause {
+  def resolve(signature: Try[ProcedureSignature]): ResolvedCall = ResolvedCall(call, signature)(position)
 
   override def semanticCheck = call.semanticCheck(Expression.SemanticContext.Results)
 }
 
-case class UnresolvedCall(call: ProcedureCall)(val position: InputPosition) extends CallClause {
-  def resolve(signature: Try[ProcedureSignature]): ResolvedCall = ResolvedCall(call)(signature)(position)
-}
+case class ResolvedCall(call: ProcedureCall, resolvedSignature: Try[ProcedureSignature])(val position: InputPosition) extends CallClause {
 
-// TODO: Use information for tigher semantic checking
-case class ResolvedCall(call: ProcedureCall)(val signature: Try[ProcedureSignature])(val position: InputPosition) extends CallClause
+  override def semanticCheck = {
+    resolvedSignature match {
+      case Success(signature) =>
+        call.semanticCheck(Expression.SemanticContext.Results, signature)
+      case Failure(e) =>
+        (state: SemanticState) =>
+          SemanticCheckResult.error(state, SemanticError(e.getMessage, position))
+    }
+  }
+}
 
 sealed trait HorizonClause extends Clause with SemanticChecking {
   override def semanticCheck = noteCurrentScope

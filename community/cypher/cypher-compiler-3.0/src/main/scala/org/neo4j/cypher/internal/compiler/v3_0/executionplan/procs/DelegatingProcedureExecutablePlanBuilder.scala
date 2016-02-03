@@ -40,8 +40,9 @@ case class DelegatingProcedureExecutablePlanBuilder(delegate: ExecutablePlanBuil
     inputQuery.statement match {
 
       // Global call: CALL foo.bar.baz("arg1", 2)
-      case Query(None, SingleQuery(Seq(call@ResolvedCall(ProcedureCall(namespace, LiteralProcedureName(name), providedArgs))))) =>
-        val signature = call.signature.get
+      case Query(None, SingleQuery(Seq(ResolvedCall(ProcedureCall(namespace, LiteralProcedureName(name), providedArgs, results), resolvedSignature))))
+        if results.isEmpty =>
+        val signature = resolvedSignature.get
 
         providedArgs.foreach { args =>
           if (args.nonEmpty && args.size != signature.inputSignature.size) {
