@@ -21,7 +21,7 @@ package org.neo4j.cypher.internal.frontend.v3_0.ast
 
 import org.neo4j.cypher.internal.frontend.v3_0.Foldable._
 import org.neo4j.cypher.internal.frontend.v3_0.ast.Expression._
-import org.neo4j.cypher.internal.frontend.v3_0.spi.{ProcedureSignature, ProcedureName}
+import org.neo4j.cypher.internal.frontend.v3_0.spi.{ProcedureName, ProcedureSignature}
 import org.neo4j.cypher.internal.frontend.v3_0.symbols.{CypherType, TypeSpec, _}
 import org.neo4j.cypher.internal.frontend.v3_0.{ast, _}
 
@@ -208,16 +208,16 @@ trait InfixFunctionTyping extends FunctionTyping { self: Expression =>
 
 case class ProcedureCall(namespace: List[String],
                          literalName: LiteralProcedureName,
+                         // None <=> Called without arguments (i.e. pulls them from parameters)
                          providedArgs: Option[Seq[Expression]],
-                         results: Seq[Variable] = Seq.empty)
-                        (val position: InputPosition)
-  extends Expression {
+                         resultFields: Seq[Variable] = Seq.empty
+                        )(val position: InputPosition) extends Expression {
 
   def procedureName = ProcedureName(namespace, literalName.name)
 
   override def semanticCheck(ctx: SemanticContext): SemanticCheck = {
     val checkArgs = providedArgs.map(_.semanticCheck(ctx)).getOrElse(SemanticCheckResult.success)
-    val checkResults = results.foldSemanticCheck(_.declare(CTAny))
+    val checkResults = resultFields.foldSemanticCheck(_.declare(CTAny))
 
     checkArgs chain checkResults
   }
@@ -230,7 +230,7 @@ case class ProcedureCall(namespace: List[String],
       if (expectedNumArgs == actualNumArgs) {
         signature.inputSignature.zip(args).map { input =>
           val (fieldSig, arg) = input
-          arg.expectType(fieldSig.typ) chain arg.semanticCheck(ctx)
+          arg.semanticCheck(ctx) chain arg.expectType(fieldSig.typ.covariant)
         }.foldLeft(SemanticCheckResult.success)(_ chain _)
       } else {
         SemanticCheckResult.error(_: SemanticState, SemanticError(s"Procedure call does not provide the required number of arguments ($expectedNumArgs) ", position))
@@ -238,13 +238,13 @@ case class ProcedureCall(namespace: List[String],
     }.getOrElse(SemanticCheckResult.success)
 
     val checkResults =
-      if (results.isEmpty)
+      if (resultFields.isEmpty)
         SemanticCheckResult.error(_: SemanticState, SemanticError("Procedures called from within a Cypher query must explicitly name result fields", position))
       else {
         val expectedResultFields = signature.outputSignature.length
-        val actualResultFields = results.length
+        val actualResultFields = resultFields.length
         if (expectedResultFields == actualResultFields) {
-          signature.outputSignature.zip(results).map { output =>
+          signature.outputSignature.zip(resultFields).map { output =>
             val (fieldSig, result) = output
             result.declare(fieldSig.typ)
           }.foldLeft(SemanticCheckResult.success)(_ chain _)

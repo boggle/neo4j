@@ -43,7 +43,6 @@ case class DelegatingProcedureExecutablePlanBuilder(delegate: ExecutablePlanBuil
       case Query(None, SingleQuery(Seq(ResolvedCall(ProcedureCall(namespace, LiteralProcedureName(name), providedArgs, results), resolvedSignature))))
         if results.isEmpty =>
         val signature = resolvedSignature.get
-
         providedArgs.foreach { args =>
           if (args.nonEmpty && args.size != signature.inputSignature.size) {
             throw new InvalidArgumentException(

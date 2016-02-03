@@ -52,3 +52,6 @@ case class UnwindPipe(source: Pipe, collection: Expression, variable: String)
 
   def withEstimatedCardinality(estimated: Double) = copy()(Some(estimated))
 }
+
+
+
