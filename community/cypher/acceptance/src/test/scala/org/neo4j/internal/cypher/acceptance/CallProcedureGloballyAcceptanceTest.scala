@@ -29,7 +29,7 @@ import org.neo4j.kernel.api.proc.ProcedureSignature.procedureSignature
 import org.neo4j.kernel.api.proc.Neo4jTypes
 import CallableProcedure.BasicProcedure
 
-class CallProcedureAcceptanceTest extends ExecutionEngineFunSuite {
+class CallProcedureGloballyAcceptanceTest extends ExecutionEngineFunSuite {
 
   test("should be able to find labels from built-in-procedure") {
     // Given
