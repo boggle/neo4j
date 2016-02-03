@@ -21,7 +21,7 @@ package org.neo4j.cypher.internal.frontend.v3_0.parser
 
 import org.neo4j.cypher.internal.frontend.v3_0.spi.ProcedureSignature
 import org.neo4j.cypher.internal.frontend.v3_0.{InputPosition, ast}
-import org.neo4j.cypher.internal.frontend.v3_0.ast.{ProcName, Expression}
+import org.neo4j.cypher.internal.frontend.v3_0.ast.{LiteralProcedureName, Expression}
 import org.parboiled.scala._
 
 import scala.collection.immutable.IndexedSeq

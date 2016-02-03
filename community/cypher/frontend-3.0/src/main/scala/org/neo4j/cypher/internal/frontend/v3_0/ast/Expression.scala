@@ -20,11 +20,10 @@
 package org.neo4j.cypher.internal.frontend.v3_0.ast
 
 import org.neo4j.cypher.internal.frontend.v3_0.Foldable._
-import org.neo4j.cypher.internal.frontend.v3_0.ast.Expression.SemanticContext.Simple
-import org.neo4j.cypher.internal.frontend.v3_0.spi.ProcedureSignature
-import org.neo4j.cypher.internal.frontend.v3_0.{ast, _}
 import org.neo4j.cypher.internal.frontend.v3_0.ast.Expression._
+import org.neo4j.cypher.internal.frontend.v3_0.spi.ProcedureName
 import org.neo4j.cypher.internal.frontend.v3_0.symbols.{CypherType, TypeSpec, _}
+import org.neo4j.cypher.internal.frontend.v3_0.{ast, _}
 
 import scala.collection.immutable.Stack
 
@@ -207,9 +206,13 @@ trait InfixFunctionTyping extends FunctionTyping { self: Expression =>
   def rhs: Expression
 }
 
-case class ProcedureCall(namespace: List[String], procName: ProcName,
-                         providedArgs: Option[Seq[Expression]])(val position: InputPosition)
+case class ProcedureCall(namespace: List[String],
+                         literalName: LiteralProcedureName,
+                         providedArgs: Option[Seq[Expression]])
+                        (val position: InputPosition)
   extends Expression {
+
+  def procedureName = ProcedureName(namespace, literalName.name)
 
   override def semanticCheck(ctx: SemanticContext): SemanticCheck =
       providedArgs.map(_.semanticCheck(ctx)).getOrElse(SemanticCheckResult.success)
