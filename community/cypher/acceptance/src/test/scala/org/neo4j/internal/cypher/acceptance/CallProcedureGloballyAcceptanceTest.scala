@@ -204,7 +204,7 @@ class CallProcedureGloballyAcceptanceTest extends ExecutionEngineFunSuite {
     register(Neo4jTypes.NTNumber)
 
     // Then
-    a [CypherTypeException] shouldBe thrownBy(execute("CALL my.first.proc('ten')"))
+    a [SyntaxException] shouldBe thrownBy(execute("CALL my.first.proc('ten')"))
   }
 
   test("if signature declares number all number types are valid") {
@@ -229,7 +229,7 @@ class CallProcedureGloballyAcceptanceTest extends ExecutionEngineFunSuite {
     register(Neo4jTypes.NTInteger)
 
     // Then
-    a [CypherTypeException] shouldBe thrownBy(execute("CALL my.first.proc(42.0)"))
+    a [SyntaxException] shouldBe thrownBy(execute("CALL my.first.proc(42.0)"))
   }
 
   test("should not fail if a procedure declares a float but gets an integer") {
@@ -253,7 +253,7 @@ class CallProcedureGloballyAcceptanceTest extends ExecutionEngineFunSuite {
     register(Neo4jTypes.NTString, Neo4jTypes.NTNumber)
 
     // Then
-    an [InvalidArgumentException] shouldBe thrownBy(execute("CALL my.first.proc('ten')"))
+    an [SyntaxException] shouldBe thrownBy(execute("CALL my.first.proc('ten')"))
   }
 
   test("should fail if too many arguments") {
@@ -261,7 +261,7 @@ class CallProcedureGloballyAcceptanceTest extends ExecutionEngineFunSuite {
     register(Neo4jTypes.NTString, Neo4jTypes.NTNumber)
 
     // Then
-    an [InvalidArgumentException] shouldBe thrownBy(execute("CALL my.first.proc('ten', 10, 42)"))
+    an [SyntaxException] shouldBe thrownBy(execute("CALL my.first.proc('ten', 10, 42)"))
   }
 
   test("should fail if implicit argument is missing") {

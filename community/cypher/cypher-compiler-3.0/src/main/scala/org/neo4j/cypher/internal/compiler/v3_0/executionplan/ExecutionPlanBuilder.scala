@@ -89,7 +89,7 @@ object ExecutablePlanBuilder {
 
 trait ExecutablePlanBuilder {
 
-  def producePlan(inputQuery: PreparedQuery, planContext: PlanContext,
+  def producePlan(inputQuery: PreparedQuerySemantics, planContext: PlanContext,
                   tracer: CompilationPhaseTracer = CompilationPhaseTracer.NO_TRACING,
                   createFingerprintReference: (Option[PlanFingerprint]) => PlanFingerprintReference): ExecutionPlan
 }
@@ -100,7 +100,7 @@ class ExecutionPlanBuilder(graph: GraphDatabaseQueryService,
                            createFingerprintReference: Option[PlanFingerprint] => PlanFingerprintReference)
   extends PatternGraphBuilder {
 
-  def build(planContext: PlanContext, inputQuery: PreparedQuery,
+  def build(planContext: PlanContext, inputQuery: PreparedQuerySemantics,
             tracer: CompilationPhaseTracer = CompilationPhaseTracer.NO_TRACING): ExecutionPlan = {
 
     executionPlanBuilder.producePlan(inputQuery, planContext, tracer, createFingerprintReference)
@@ -108,7 +108,7 @@ class ExecutionPlanBuilder(graph: GraphDatabaseQueryService,
 }
 
 object InterpretedExecutionPlanBuilder {
-  def interpretedToExecutionPlan(pipeInfo: PipeInfo, planContext: PlanContext, inputQuery: PreparedQuery,
+  def interpretedToExecutionPlan(pipeInfo: PipeInfo, planContext: PlanContext, inputQuery: PreparedQuerySemantics,
                                  createFingerprintReference:Option[PlanFingerprint]=>PlanFingerprintReference,
                                  config: CypherCompilerConfiguration) = {
     val abstractQuery = inputQuery.abstractQuery

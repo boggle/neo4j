@@ -24,7 +24,10 @@ import org.neo4j.cypher.internal.CypherCompiler.{CLOCK, DEFAULT_QUERY_PLAN_TTL, 
 import org.neo4j.cypher.internal.compatibility.WrappedMonitors3_0
 import org.neo4j.cypher.internal.compiler.v3_0.tracing.rewriters.RewriterStepSequencer
 import org.neo4j.cypher.internal.compiler.v3_0.{CypherCompilerFactory, InfoLogger, _}
+import org.neo4j.cypher.internal.spi.v3_0.TransactionBoundPlanContext
 import org.neo4j.cypher.internal.spi.v3_0.GeneratedQueryStructure
+import org.neo4j.kernel.GraphDatabaseAPI
+import org.neo4j.kernel.impl.core.ThreadToStatementContextBridge
 
 class CypherCompilerPerformanceTest extends GraphDatabaseFunSuite {
 
@@ -153,11 +156,13 @@ class CypherCompilerPerformanceTest extends GraphDatabaseFunSuite {
 
   def plan(query: String): (Double, Double) = {
     val compiler = createCurrentCompiler
-    val (prepareTime, preparedQuery) = measure(compiler.prepareQuery(query, query, devNullLogger))
-    val (planTime, _) = graph.inTx {
-      measure(compiler.executionPlanBuilder.build(planContext, preparedQuery))
+    val (preparedSyntacticQueryTime, preparedSyntacticQuery) = measure(compiler.prepareSyntacticQuery(query, query, devNullLogger))
+    val planTime = graph.inTx {
+      val (semanticTime, semanticQuery) = measure(compiler.prepareSemanticQuery(preparedSyntacticQuery, planContext, None, CompilationPhaseTracer.NO_TRACING))
+      val (planTime, _) = measure(compiler.executionPlanBuilder.build(planContext, semanticQuery))
+      planTime + semanticTime
     }
-    (prepareTime, planTime)
+    (preparedSyntacticQueryTime, planTime)
   }
 
   def measure[T](f: => T): (Long, T) = {

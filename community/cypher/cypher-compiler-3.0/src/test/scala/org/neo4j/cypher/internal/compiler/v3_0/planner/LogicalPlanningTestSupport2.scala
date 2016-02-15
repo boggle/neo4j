@@ -154,7 +154,7 @@ trait LogicalPlanningTestSupport2 extends CypherTestSupport with AstConstruction
 
       override def bidirectionalTraversalMatcher(steps: ExpanderStep, start: EntityProducer[Node], end: EntityProducer[Node]): TraversalMatcher = ???
 
-      override def procedureSignature(name: ProcedureName): Try[ProcedureSignature] = ???
+      override def procedureSignature(name: ProcedureName): ProcedureSignature = ???
     }
 
     def planFor(queryString: String): SemanticPlan = {

@@ -82,12 +82,8 @@ public class ProcedureIT
     {
         //Expect
         exception.expect( QueryExecutionException.class );
-        exception.expectMessage(
-                "Parameter `name` for procedure `org.neo4j.procedure.simpleArgument`" + lineSeparator() +
-                "expects value of type String but got value of type Integer." + lineSeparator() + lineSeparator() +
-                "Usage: CALL org.neo4j.procedure.simpleArgument(<name>)" + lineSeparator() +
-                "Parameters:" + lineSeparator() +
-                "    name (type Integer)"  );
+        exception.expectMessage("Type mismatch: expected Integer but was String (line 1, column 41 (offset: 40))");
+
         // When
         try ( Transaction ignore = db.beginTx() )
         {

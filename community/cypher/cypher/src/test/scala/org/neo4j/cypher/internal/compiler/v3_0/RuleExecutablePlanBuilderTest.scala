@@ -71,14 +71,14 @@ class RuleExecutablePlanBuilderTest
     config = config
   )
 
-  class FakePreparedQuery(q: AbstractQuery)
-    extends PreparedQuery(mock[Statement], "q", Map.empty)(SemanticTable(), Set.empty, Scope(Map.empty, Seq.empty), devNullLogger) {
+  class FakePreparedSemanticQuery(q: AbstractQuery)
+    extends PreparedQuerySemantics(mock[Statement], "q", Map.empty, mock[SemanticTable], mock[Scope])(devNullLogger) {
 
     override def abstractQuery: AbstractQuery = q
 
     override def isPeriodicCommit: Boolean = q.isInstanceOf[PeriodicCommitQuery]
 
-    override def rewrite(rewriter: Rewriter): PreparedQuery = this
+    override def rewrite(rewriter: Rewriter): PreparedQuerySemantics = this
   }
 
 
@@ -88,7 +88,7 @@ class RuleExecutablePlanBuilderTest
 
     val exception = intercept[ExecutionException](timeoutAfter(5) {
       val pipeBuilder = new LegacyExecutablePlanBuilderWithCustomPlanBuilders(Seq(new BadBuilder), new WrappedMonitors3_0(kernelMonitors), config)
-      val query = new FakePreparedQuery(q)
+      val query = new FakePreparedSemanticQuery(q)
       pipeBuilder.producePipe(query, planContext, CompilationPhaseTracer.NO_TRACING)
     })
 
@@ -114,7 +114,7 @@ class RuleExecutablePlanBuilderTest
       val transactionalContext = new TransactionBoundTransactionalContext(graph, tx, true, statement)
       val queryContext = new TransactionBoundQueryContext(transactionalContext)(indexSearchMonitor)
       val pkId = queryContext.getPropertyKeyId("foo")
-      val parsedQ = new FakePreparedQuery(q)
+      val parsedQ = new FakePreparedSemanticQuery(q)
 
       // when
 
@@ -141,7 +141,7 @@ class RuleExecutablePlanBuilderTest
       val transactionalContext = new TransactionBoundTransactionalContext(graph, tx, true, statement)
       val queryContext = new TransactionBoundQueryContext(transactionalContext)(indexSearchMonitor)
       val labelId = queryContext.getLabelId("Person")
-      val parsedQ = new FakePreparedQuery(q)
+      val parsedQ = new FakePreparedSemanticQuery(q)
 
       // when
       val predicate = execPlanBuilder.producePipe(parsedQ, planContext,CompilationPhaseTracer.NO_TRACING).pipe.asInstanceOf[FilterPipe].predicate
@@ -166,7 +166,7 @@ class RuleExecutablePlanBuilderTest
           .returns()
         )
         .returns(AllVariables())
-      val parsedQ = new FakePreparedQuery(q)
+      val parsedQ = new FakePreparedSemanticQuery(q)
 
       val pipeBuilder = new LegacyExecutablePlanBuilder(new WrappedMonitors3_0(kernelMonitors), config, RewriterStepSequencer.newValidating)
       val pipe = pipeBuilder.producePipe(parsedQ, planContext, CompilationPhaseTracer.NO_TRACING).pipe
@@ -194,7 +194,7 @@ class RuleExecutablePlanBuilderTest
           .returns()
         )
         .returns(AllVariables())
-      val parsedQ = new FakePreparedQuery(q)
+      val parsedQ = new FakePreparedSemanticQuery(q)
 
       val pipeBuilder = new LegacyExecutablePlanBuilder(new WrappedMonitors3_0(kernelMonitors), config, RewriterStepSequencer.newValidating)
       val pipe = pipeBuilder.producePipe(parsedQ, planContext, CompilationPhaseTracer.NO_TRACING).pipe
@@ -220,7 +220,7 @@ class RuleExecutablePlanBuilderTest
           .returns()
         )
         .returns(AllVariables())
-      val parsedQ = new FakePreparedQuery(q)
+      val parsedQ = new FakePreparedSemanticQuery(q)
 
 
       val execPlanBuilder = new LegacyExecutablePlanBuilder(new WrappedMonitors3_0(kernelMonitors), config, RewriterStepSequencer.newValidating)
@@ -245,7 +245,7 @@ class RuleExecutablePlanBuilderTest
           returns(),
         None
       )
-      val parsedQ = new FakePreparedQuery(q)
+      val parsedQ = new FakePreparedSemanticQuery(q)
 
       val pipeBuilder = new LegacyExecutablePlanBuilder(new WrappedMonitors3_0(kernelMonitors), config, RewriterStepSequencer.newValidating)
 

@@ -125,7 +125,7 @@ class TransactionBoundPlanContext(statement: Statement, val gdb: GraphDatabaseQu
 
   val txIdProvider = LastCommittedTxIdProvider(gdb)
 
-  override def procedureSignature(name: ProcedureName) = Try {
+  override def procedureSignature(name: ProcedureName) = {
     val kn = new KernelProcedureSignature.ProcedureName(name.namespace.asJava, name.name)
     val ks = statement.readOperations().procedureGet(kn)
     val input = ks.inputSignature().asScala.map(s => FieldSignature(s.name(), asCypherType(s.neo4jType())))

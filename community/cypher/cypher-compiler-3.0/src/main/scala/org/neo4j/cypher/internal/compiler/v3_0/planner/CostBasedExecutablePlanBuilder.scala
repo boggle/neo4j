@@ -51,7 +51,7 @@ case class CostBasedExecutablePlanBuilder(monitors: Monitors,
                                           config: CypherCompilerConfiguration)
   extends ExecutablePlanBuilder {
 
-  override def producePlan(inputQuery: PreparedQuery, planContext: PlanContext, tracer: CompilationPhaseTracer, createFingerprintReference: (Option[PlanFingerprint]) => PlanFingerprintReference) = {
+  override def producePlan(inputQuery: PreparedQuerySemantics, planContext: PlanContext, tracer: CompilationPhaseTracer, createFingerprintReference: (Option[PlanFingerprint]) => PlanFingerprintReference) = {
     val statement =
       CostBasedExecutablePlanBuilder.rewriteStatement(
         statement = inputQuery.statement,
