@@ -19,14 +19,13 @@
  */
 package org.neo4j.cypher.internal.frontend.v3_0.ast
 
+import org.neo4j.cypher.internal.frontend.v3_0.SemanticCheckResult._
 import org.neo4j.cypher.internal.frontend.v3_0._
-import org.neo4j.cypher.internal.frontend.v3_0.ast.Expression.SemanticContext.Simple
+import org.neo4j.cypher.internal.frontend.v3_0.ast.Expression.SemanticContext
 import org.neo4j.cypher.internal.frontend.v3_0.helpers.StringHelper.RichString
 import org.neo4j.cypher.internal.frontend.v3_0.notification.CartesianProductNotification
-import org.neo4j.cypher.internal.frontend.v3_0.spi.ProcedureSignature
+import org.neo4j.cypher.internal.frontend.v3_0.spi.{QualifiedProcedureName, ProcedureSignature}
 import org.neo4j.cypher.internal.frontend.v3_0.symbols._
-
-import scala.util.{Failure, Success, Try}
 
 sealed trait Clause extends ASTNode with ASTPhrase with SemanticCheckable {
   def name: String
@@ -291,23 +290,86 @@ case class Unwind(expression: Expression, variable: Variable)(val position: Inpu
     }
 }
 
-// TODO: Make Projection clause
 abstract class CallClause extends Clause {
   override def name = "CALL"
 
-  def call: ProcedureCall
+  def qualifiedName: QualifiedProcedureName
+
+  def declaredArguments: Option[Seq[Expression]]
+  def declaredResults: Option[Seq[ProcedureResultItem]]
 }
 
-case class UnresolvedCall(call: ProcedureCall)(val position: InputPosition) extends CallClause {
-  override def semanticCheck = call.semanticCheck(Expression.SemanticContext.Results)
+case class UnresolvedCall(procedureNamespace: ProcedureNamespace,
+                          procedureName: ProcedureName,
+                          // None: No arguments given
+                          declaredArguments: Option[Seq[Expression]] = None,
+                          // None: No results declared
+                          declaredResults: Option[Seq[ProcedureResultItem]] = None
+                         )(val position: InputPosition) extends CallClause {
+
+  def qualifiedName = QualifiedProcedureName(procedureNamespace.parts, procedureName.name)
+
+  def resolve(signatureLookup: QualifiedProcedureName => ProcedureSignature) = {
+    val signature = signatureLookup(qualifiedName)
+    val callArguments = declaredArguments.getOrElse(signature.inputSignature.map { field => Parameter(field.name)(position) })
+    val callResults = declaredResults.getOrElse(signature.outputSignature.map { field => ProcedureResultItem(Variable(field.name)(position))(position) })
+    ResolvedCall(callArguments, callResults)(signature, declaredArguments, declaredResults)(position)
+  }
+
+  override def semanticCheck: SemanticCheck = {
+    val argumentCheck = declaredArguments.map(_.semanticCheck(SemanticContext.Results)).getOrElse(success)
+    val resultsCheck = declaredResults.map(_.foldSemanticCheck(_.semanticCheck)).getOrElse(success)
+
+    argumentCheck chain resultsCheck
+  }
 }
 
-case class ResolvedCall(call: ProcedureCall,
-                        resolvedSignature: ProcedureSignature)
+case class ResolvedCall(callArguments: Seq[Expression],
+                        callResults: Seq[ProcedureResultItem])
+                       (val signature: ProcedureSignature,
+                        val declaredArguments: Option[Seq[Expression]] = None,
+                        val declaredResults: Option[Seq[ProcedureResultItem]] = None)
                        (val position: InputPosition)
   extends CallClause {
 
-  override def semanticCheck = call.semanticCheck(Expression.SemanticContext.Results, resolvedSignature)
+  def qualifiedName = signature.name
+
+  def fullyDeclared = declaredArguments.nonEmpty && declaredResults.nonEmpty
+
+  def fakeDeclarations =
+    copy()(signature, Some(callArguments), Some(callResults))(position)
+
+  def coerceArguments = {
+    val coercedArguments= signature.inputSignature.zip(callArguments).map { case (field, arg) => CoerceTo(arg, field.typ) }
+    copy(callArguments = coercedArguments)(signature, declaredArguments, declaredResults)(position)
+  }
+
+  override def semanticCheck: SemanticCheck = {
+    val expectedNumArgs = signature.inputSignature.length
+    val actualNumArgs = callArguments.length
+
+    val argumentCheck = {
+      if (expectedNumArgs == actualNumArgs) {
+        signature.inputSignature.zip(callArguments).map {
+          case (field, arg) => arg.semanticCheck(SemanticContext.Results) chain arg.expectType(field.typ.covariant)
+        }.foldLeft(success)(_ chain _)
+      } else {
+        error(_: SemanticState, SemanticError(s"Procedure call does not provide the required number of arguments ($expectedNumArgs) ", position))
+      }
+    }
+
+    val resultCheck = callResults.foldSemanticCheck(_.semanticCheck(callResultTypes))
+
+    argumentCheck chain resultCheck
+  }
+
+  def callResultIndices: Seq[(Int, String)] = {
+    val outputIndices: Map[String, Int] = signature.outputSignature.map(_.name).zip(signature.outputSignature.indices).toMap
+    callResults.map(result => outputIndices(result.outputName) -> result.variable.name)
+  }
+
+  def callResultTypes: Map[String, CypherType] =
+    signature.outputSignature.map { field => field.name -> field.typ }.toMap
 }
 
 sealed trait HorizonClause extends Clause with SemanticChecking {

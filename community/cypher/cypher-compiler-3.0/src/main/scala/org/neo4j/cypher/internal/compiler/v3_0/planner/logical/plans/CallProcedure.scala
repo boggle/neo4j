@@ -19,21 +19,30 @@
  */
 package org.neo4j.cypher.internal.compiler.v3_0.planner.logical.plans
 
-import org.neo4j.cypher.internal.frontend.v3_0.ast.{Variable, ProcedureCall, Expression}
 import org.neo4j.cypher.internal.compiler.v3_0.planner.{CardinalityEstimation, PlannerQuery}
-import org.neo4j.cypher.internal.frontend.v3_0.spi.ProcedureSignature
+import org.neo4j.cypher.internal.frontend.v3_0.ast.{Expression, ResolvedCall}
 
 case class CallProcedure(left: LogicalPlan,
-                         signature: ProcedureSignature,
-                         argExprs: Seq[Expression],
-                         resultFields: Seq[Variable])
+                         call: ResolvedCall)
                         (val solved: PlannerQuery with CardinalityEstimation)
   extends LogicalPlan with LazyLogicalPlan {
   val lhs = Some(left)
   def rhs = None
 
-  def availableSymbols: Set[IdName] = left.availableSymbols ++ resultFields.map(v => IdName(v.name))
+  def availableSymbols: Set[IdName] = left.availableSymbols ++ call.callResults.map { result => IdName.fromVariable(result.variable) }
 
-  override def mapExpressions(f: (Set[IdName], Expression) => Expression): LogicalPlan =
-    copy(argExprs = argExprs.map(arg => f(left.availableSymbols, arg)))(solved)
+  override def mapExpressions(f: (Set[IdName], Expression) => Expression): LogicalPlan = {
+    val leftSymbols = left.availableSymbols
+    val exprMapper = (expr: Expression) => f(leftSymbols, expr)
+    val newLeft = left.mapExpressions(f)
+    val newCall = call.copy(
+      callArguments = call.callArguments.map(exprMapper)
+    )(
+      call.signature,
+      call.declaredArguments.map(_.map(exprMapper)),
+      call.declaredResults
+    )(call.position)
+
+    copy(left = newLeft, call = newCall)(solved)
+  }
 }

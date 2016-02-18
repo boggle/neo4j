@@ -23,7 +23,7 @@ import java.net.URL
 
 import org.neo4j.cypher.internal.compiler.v3_0.spi._
 import org.neo4j.cypher.internal.frontend.v3_0.SemanticDirection
-import org.neo4j.cypher.internal.frontend.v3_0.spi.{ProcedureName, ProcedureSignature}
+import org.neo4j.cypher.internal.frontend.v3_0.spi.{QualifiedProcedureName, ProcedureSignature}
 import org.neo4j.cypher.internal.spi.v3_0.ExceptionTranslationSupport
 import org.neo4j.graphdb.{Node, PropertyContainer, Relationship}
 import org.neo4j.kernel.api.index.IndexDescriptor
@@ -124,10 +124,10 @@ class ExceptionTranslatingQueryContextFor3_0(inner: QueryContext) extends Delega
   override def dropRelationshipPropertyExistenceConstraint(relTypeId: Int, propertyKeyId: Int) =
     translateException(super.dropRelationshipPropertyExistenceConstraint(relTypeId, propertyKeyId))
 
-  override def callReadOnlyProcedure(name: ProcedureName, args: Seq[Any]): Iterator[Array[AnyRef]] =
+  override def callReadOnlyProcedure(name: QualifiedProcedureName, args: Seq[Any]): Iterator[Array[AnyRef]] =
     translateIterator(super.callReadOnlyProcedure(name, args))
 
-  override def callReadWriteProcedure(name: ProcedureName, args: Seq[Any]): Iterator[Array[AnyRef]] =
+  override def callReadWriteProcedure(name: QualifiedProcedureName, args: Seq[Any]): Iterator[Array[AnyRef]] =
     translateIterator(super.callReadWriteProcedure(name, args))
 
   override def isGraphKernelResultValue(v: Any): Boolean =

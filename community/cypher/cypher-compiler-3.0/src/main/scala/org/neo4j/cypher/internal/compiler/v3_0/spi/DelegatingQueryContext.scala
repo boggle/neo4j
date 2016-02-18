@@ -24,7 +24,7 @@ import java.net.URL
 import org.neo4j.cypher.internal.compiler.v3_0.commands.expressions.{Expander, KernelPredicate}
 import org.neo4j.cypher.internal.compiler.v3_0.pipes.matching.PatternNode
 import org.neo4j.cypher.internal.frontend.v3_0.SemanticDirection
-import org.neo4j.cypher.internal.frontend.v3_0.spi.{ProcedureName, ProcedureSignature}
+import org.neo4j.cypher.internal.frontend.v3_0.spi.{QualifiedProcedureName, ProcedureSignature}
 import org.neo4j.graphdb.{Node, Path, PropertyContainer, Relationship}
 import org.neo4j.kernel.api.index.IndexDescriptor
 
@@ -184,10 +184,10 @@ class DelegatingQueryContext(val inner: QueryContext) extends QueryContext {
                                filters: Seq[KernelPredicate[PropertyContainer]]): Iterator[Path] =
     manyDbHits(inner.allShortestPath(left, right, depth, expander, pathPredicate, filters))
 
-  override def callReadOnlyProcedure(name: ProcedureName, args: Seq[Any]) =
+  override def callReadOnlyProcedure(name: QualifiedProcedureName, args: Seq[Any]) =
     inner.callReadOnlyProcedure(name, args)
 
-  override def callReadWriteProcedure(name: ProcedureName, args: Seq[Any]) =
+  override def callReadWriteProcedure(name: QualifiedProcedureName, args: Seq[Any]) =
     inner.callReadWriteProcedure(name, args)
 
   override def isGraphKernelResultValue(v: Any): Boolean =

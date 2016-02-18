@@ -23,6 +23,7 @@ import org.neo4j.cypher.internal.compiler.v3_0.executionplan.{ExecutablePlanBuil
 import org.neo4j.cypher.internal.compiler.v3_0.spi.{PlanContext, QueryContext}
 import org.neo4j.cypher.internal.compiler.v3_0.{PreparedQuerySemantics, CompilationPhaseTracer, PreparedQuerySyntax}
 import org.neo4j.cypher.internal.frontend.v3_0.ast._
+import org.neo4j.cypher.internal.frontend.v3_0.helpers.Eagerly
 import org.neo4j.cypher.internal.frontend.v3_0.spi.{FieldSignature, ProcedureSignature}
 import org.neo4j.cypher.internal.frontend.v3_0.symbols.TypeSpec
 import org.neo4j.cypher.internal.frontend.v3_0.{CypherTypeException, InvalidArgumentException, SemanticTable}
@@ -40,8 +41,8 @@ case class DelegatingProcedureExecutablePlanBuilder(delegate: ExecutablePlanBuil
     inputQuery.statement match {
 
       // Global call: CALL foo.bar.baz("arg1", 2)
-      case Query(None, SingleQuery(Seq(ResolvedCall(ProcedureCall(_, _, Some(args), _), resolvedSignature)))) =>
-        CallProcedureExecutionPlan(resolvedSignature, args)
+      case Query(None, SingleQuery(Seq(resolved@ResolvedCall(args, _)))) =>
+        CallProcedureExecutionPlan(resolved.signature, args, resolved.callResultIndices)
 
       // CREATE CONSTRAINT ON (node:Label) ASSERT node.prop IS UNIQUE
       case CreateUniquePropertyConstraint(node, label, prop) =>

@@ -398,9 +398,9 @@ case class LogicalPlanProducer(cardinalityModel: CardinalityModel) extends Colle
     UnwindCollection(inner, name, expression)(solved)
   }
 
-  def planCallProcedure(inner: LogicalPlan, signature: ProcedureSignature, argExprs: Seq[Expression], resultFields: Seq[Variable])(implicit context: LogicalPlanningContext) = {
-    val solved = inner.solved.updateTailOrSelf(_.withHorizon(CallProcedureProjection(signature,argExprs, resultFields)))
-    CallProcedure(inner, signature, argExprs, resultFields)(solved)
+  def planCallProcedure(inner: LogicalPlan, call: ResolvedCall)(implicit context: LogicalPlanningContext) = {
+    val solved = inner.solved.updateTailOrSelf(_.withHorizon(CallProcedureProjection(call)))
+    CallProcedure(inner, call)(solved)
   }
 
   def planPassAll(inner: LogicalPlan)(implicit context: LogicalPlanningContext) = {
