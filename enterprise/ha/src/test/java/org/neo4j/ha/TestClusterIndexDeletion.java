@@ -36,7 +36,6 @@ public class TestClusterIndexDeletion
 {
     @ClassRule
     public static ClusterRule clusterRule = new ClusterRule( TestClusterIndexDeletion.class )
-            .withSharedSetting( HaSettings.ha_server, ":6001-6005" )
             .withSharedSetting( HaSettings.tx_push_factor, "2" );
 
     @Test

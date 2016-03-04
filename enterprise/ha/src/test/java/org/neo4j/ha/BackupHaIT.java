@@ -28,6 +28,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import org.neo4j.backup.OnlineBackupSettings;
 import org.neo4j.function.IntFunction;
 import org.neo4j.kernel.configuration.Settings;
@@ -39,6 +44,7 @@ import org.neo4j.test.ha.ClusterRule;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
+import static org.junit.Assert.assertThat;
 import static org.neo4j.backup.BackupEmbeddedIT.createSomeData;
 import static org.neo4j.backup.BackupEmbeddedIT.runBackupToolFromOtherJvmToGetExitCode;
 

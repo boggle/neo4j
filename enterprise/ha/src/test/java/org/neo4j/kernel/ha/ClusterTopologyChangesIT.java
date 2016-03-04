@@ -19,15 +19,17 @@
  */
 package org.neo4j.kernel.ha;
 
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.commons.lang3.SystemUtils;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
 
 import org.neo4j.cluster.ClusterSettings;
 import org.neo4j.cluster.InstanceId;
@@ -58,12 +60,10 @@ import org.neo4j.test.RepeatRule;
 import org.neo4j.test.SuppressOutput;
 import org.neo4j.test.ha.ClusterRule;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import static org.neo4j.cluster.protocol.cluster.ClusterConfiguration.COORDINATOR;
 import static org.neo4j.function.Predicates.not;
 import static org.neo4j.kernel.impl.ha.ClusterManager.allSeesAllAsAvailable;
@@ -210,6 +210,9 @@ public class ClusterTopologyChangesIT
     @Test
     public void failedInstanceShouldReceiveCorrectCoordinatorIdUponRejoiningCluster() throws Throwable
     {
+        // Starting a duplicate clusterClient on Windows can give port conflicts
+        Assume.assumeFalse( SystemUtils.IS_OS_WINDOWS );
+        
         // Given
         HighlyAvailableGraphDatabase initialMaster = cluster.getMaster();
 
@@ -271,7 +274,8 @@ public class ClusterTopologyChangesIT
         Map<String,String> configMap = MapUtil.stringMap(
                 ClusterSettings.initial_hosts.name(), cluster.getInitialHostsConfigString(),
                 ClusterSettings.server_id.name(), String.valueOf( id.toIntegerIndex() ),
-                ClusterSettings.cluster_server.name(), "0.0.0.0:8888" );
+                ClusterSettings.cluster_server.name(), "0.0.0.0:8888",
+                ClusterClientModule.clusterJoinTimeout.name(), "60s");
 
         Config config = new Config( configMap, GraphDatabaseFacadeFactory.Configuration.class,
                 GraphDatabaseSettings.class );

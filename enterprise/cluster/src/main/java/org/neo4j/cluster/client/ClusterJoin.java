@@ -154,7 +154,8 @@ public class ClusterJoin
                 {
                     try
                     {
-                        userLog.info( "Joined cluster: %s", clusterConfig.get( config.getClusterJoinTimeout(), TimeUnit.MILLISECONDS ) );
+                        userLog.info( "Joined cluster: %s",
+                                clusterConfig.get( config.getClusterJoinTimeout(), TimeUnit.MILLISECONDS ) );
                         return;
                     }
                     catch ( InterruptedException e )

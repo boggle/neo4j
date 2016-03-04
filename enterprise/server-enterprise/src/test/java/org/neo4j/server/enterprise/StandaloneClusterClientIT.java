@@ -187,6 +187,7 @@ public class StandaloneClusterClientIT
             config.put( cluster_server.name(), ":" + (5000 + i) );
             config.put( server_id.name(), "" + i );
             config.put( initial_hosts.name(), ":5001" );
+            config.put( ClusterClientModule.clusterJoinTimeout.name(), "60s" );
 
             LifeSupport moduleLife = new LifeSupport();
             ClusterClientModule clusterClientModule = new ClusterClientModule( moduleLife, new Dependencies(),
