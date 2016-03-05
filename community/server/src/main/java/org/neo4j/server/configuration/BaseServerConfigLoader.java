@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.neo4j.bolt.BoltKernelExtension;
 import org.neo4j.dbms.DatabaseManagementSystemSettings;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.collection.MapUtil;
@@ -34,7 +33,6 @@ import org.neo4j.logging.Log;
 import org.neo4j.shell.ShellSettings;
 
 import static java.util.Arrays.asList;
-
 import static org.neo4j.kernel.configuration.Settings.TRUE;
 
 public class BaseServerConfigLoader
@@ -89,7 +87,6 @@ public class BaseServerConfigLoader
     {
         config.putIfAbsent( ShellSettings.remote_shell_enabled.name(), TRUE );
         config.putIfAbsent( GraphDatabaseSettings.logs_directory.name(), "logs" );
-        config.putIfAbsent( BoltKernelExtension.Settings.enabled.name(), "true" );
         config.putIfAbsent( GraphDatabaseSettings.auth_enabled.name(), "true" );
     }
 
