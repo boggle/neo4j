@@ -27,20 +27,23 @@ import java.util.Objects;
  */
 public final class AsciiDocItem
 {
-    private final String id;
     private final String name;
     private final String description;
+    private final boolean internal;
+    private final boolean deprecated;
+    private boolean mandatory;
 
-    public AsciiDocItem( String id, String name, String description )
+    public AsciiDocItem( String name, String description, boolean internal, boolean deprecated )
     {
-        this.id = id;
+        this.internal = internal;
+        this.deprecated = deprecated;
         this.name = name;
         this.description = description;
     }
 
     public String id()
     {
-        return id;
+        return "config_" + name;
     }
 
     public String name()
@@ -51,6 +54,55 @@ public final class AsciiDocItem
     public String description()
     {
         return description;
+    }
+
+    public boolean isInternal()
+    {
+        return internal;
+    }
+
+    public boolean isDeprecated()
+    {
+        return deprecated;
+    }
+
+    public boolean hasDefault()
+    {
+        //if ( !defaultValue.equals( DEFAULT_MARKER ) )
+        return false;
+    }
+
+    public String defaultValue()
+    {
+        return "";
+    }
+
+    public boolean isMandatory()
+    {
+        return mandatory;
+    }
+
+    public String mandatoryDescription()
+    {
+        // Note MANDATORY
+        return null;
+    }
+
+    public String deprecationMessage()
+    {
+        // Note OBSOLETED & DEPRECATED
+        return null;
+    }
+
+    public String validationMessage()
+    {
+        // Note VALIDATION_MESSAGE
+        return null;
+    }
+
+    public boolean hasValidation()
+    {
+        return false;
     }
 
     @Override
@@ -65,20 +117,19 @@ public final class AsciiDocItem
             return false;
         }
         AsciiDocItem that = (AsciiDocItem) o;
-        return Objects.equals( id, that.id ) &&
-               Objects.equals( name, that.name ) &&
+        return Objects.equals( name, that.name ) &&
                Objects.equals( description, that.description );
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash( id, name, description );
+        return Objects.hash( name, description );
     }
 
     @Override
     public String toString()
     {
-        return "AsciiDocItem{" + "id='" + id + "\', name='" + name + "\', description='" + description + "\'}";
+        return "AsciiDocItem{" + "id='" + id() + "\', name='" + name + "\', description='" + description + "\'}";
     }
 }

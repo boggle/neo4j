@@ -93,7 +93,7 @@ public class ConfigAsciiDocGenerator
                     String id = "config_" + name;
                     String descriptionKey = name + SettingsResourceBundle.DESCRIPTION;
                     String description = linkifyConfigSettings( bundle.getString( descriptionKey ), name, false );
-                    AsciiDocItem beanSummary = new AsciiDocItem( id, name, description );
+                    AsciiDocItem beanSummary = new AsciiDocItem( name, description, false, false );
                     String deprecatedKey = name + SettingsResourceBundle.DEPRECATED;
                     String obsoletedKey = name + SettingsResourceBundle.OBSOLETED;
                     if ( bundle.containsKey( deprecatedKey ) || bundle.containsKey( obsoletedKey ) )
