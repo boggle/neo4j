@@ -88,7 +88,7 @@ public class ClusterTest
         }
         finally
         {
-            clusterManager.stop();
+            clusterManager.safeShutdown();
         }
     }
 
@@ -123,14 +123,13 @@ public class ClusterTest
         }
         finally
         {
-            clusterManager.stop();
+            clusterManager.safeShutdown();
         }
     }
 
     @Test
     public void testClusterWithWildcardIP() throws Throwable
     {
-        Throwable t1 = null;
         ClusterManager clusterManager = new ClusterManager.Builder( testDirectory.directory(  "testCluster" ) )
                 .withProvider( ClusterManager.clusterOfSize( "0.0.0.0", 3 ) )
                 .withSharedConfig( stringMap(
@@ -157,21 +156,10 @@ public class ClusterTest
                 Node node = anySlave.getNodeById( nodeId );
                 assertThat( node.getProperty( "foo" ).toString(), CoreMatchers.equalTo( "bar" ) );
             }
-        } catch (Throwable t) {
-             t1 = t;
         }
         finally
         {
-            try
-            {
-                clusterManager.stop();
-            } catch (Throwable t2) {
-                if (t1 != null) {
-                    throw t1;
-                } else {
-                    throw t2;
-                }
-            }
+            clusterManager.safeShutdown();
         }
     }
 
@@ -194,7 +182,7 @@ public class ClusterTest
         }
         finally
         {
-            clusterManager.stop();
+            clusterManager.safeShutdown();
         }
     }
 
@@ -314,7 +302,7 @@ public class ClusterTest
         }
         finally
         {
-            clusterManager.stop();
+            clusterManager.safeShutdown();
         }
     }
 
@@ -372,8 +360,10 @@ public class ClusterTest
         }
         finally
         {
-            clusterManager.stop();
+            clusterManager.safeShutdown();
         }
     }
+
+
 }
 
