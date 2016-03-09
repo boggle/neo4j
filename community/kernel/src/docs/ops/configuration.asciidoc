@@ -19,3 +19,13 @@ For additional configuration settings, see:
 
 include::configuration-attributes.asciidoc[]
 
+== Configuring Bolt Connectors
+
+Bolt Connectors are ports that accept connections via the Bolt Database Protocol, which is the protocol used by official Neo4j Driver Libraries.
+You can configure Neo4j with one or more connectors, allowing you, for instance, to mandate encryption for remote connections.
+
+If you are using Neo4j Embedded, you need to include the Bolt extension on your class path.
+
+Each connector has a unique key to identify it, denoted `{key}` in the listing below.
+
+include::configuration-attributes.asciidoc[]

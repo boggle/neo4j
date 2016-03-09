@@ -1,19 +1,40 @@
+/*
+ * Copyright (c) 2002-2016 "Neo Technology,"
+ * Network Engine for Objects in Lund AB [http://neotechnology.com]
+ *
+ * This file is part of Neo4j.
+ *
+ * Neo4j is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.neo4j.kernel.configuration.docs;
 
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.PrintStream;
 
 import org.neo4j.graphdb.config.Setting;
 import org.neo4j.graphdb.factory.Description;
+import org.neo4j.kernel.configuration.Group;
+import org.neo4j.kernel.configuration.GroupSettingSupport;
 import org.neo4j.kernel.configuration.Internal;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.neo4j.kernel.configuration.Settings.INTEGER;
 import static org.neo4j.kernel.configuration.Settings.NO_DEFAULT;
 import static org.neo4j.kernel.configuration.Settings.PATH;
+import static org.neo4j.kernel.configuration.Settings.STRING;
 import static org.neo4j.kernel.configuration.Settings.setting;
 
 public class SettingsDocumenterTest
@@ -21,11 +42,8 @@ public class SettingsDocumenterTest
     @Test
     public void shouldDocumentBasicSettingsClass() throws Throwable
     {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream out = new PrintStream( baos );
-
         // when
-        new SettingsDocumenter( out ).document( SimpleSettings.class );
+        String result = new SettingsDocumenter().document( SimpleSettings.class );
 
         // then
         // Note, I got the text below from invoking the existing un-tested
@@ -40,10 +58,8 @@ public class SettingsDocumenterTest
         // that there are errors in the original implementation that I've missed,
         // in which case you should trust your best judgement, and change the assertion
         // below accordingly.
-        out.flush();
-        String result = baos.toString( "UTF-8" );
         assertThat( result, equalTo( String.format(
-            "[[config-org.neo4j.kernel.configuration.docs.SettingsDocumenterTest$SimpleSettings]]%n" +
+            "[[config-org.neo4j.kernel.configuration.docs.SettingsDocumenterTest-SimpleSettings]]%n" +
             ".List of configuration settings%n" +
             "ifndef::nonhtmloutput[]%n" +
             "%n" +
@@ -62,7 +78,7 @@ public class SettingsDocumenterTest
             "endif::nonhtmloutput[]%n" +
             "%n" +
             "%n" +
-            "[[config-org.neo4j.kernel.configuration.docs.SettingsDocumenterTest$SimpleSettings-deprecated]]%n" +
+            "[[config-org.neo4j.kernel.configuration.docs.SettingsDocumenterTest-SimpleSettings-deprecated]]%n" +
             ".Deprecated settings%n" +
             "ifndef::nonhtmloutput[]%n" +
             "%n" +
@@ -85,7 +101,7 @@ public class SettingsDocumenterTest
             "[cols=\"<1h,<4\"]%n" +
             "|===%n" +
             "|Description a|Public with default.%n" +
-            "|Valid values a|`public.default` is a path.%n" +
+            "|Valid values a|public.default is a path%n" +
             "|Default value m|/tmp%n" +
             "|===%n" +
             "endif::nonhtmloutput[]%n" +
@@ -96,7 +112,7 @@ public class SettingsDocumenterTest
             "[cols=\"<1h,<4\"]%n" +
             "|===%n" +
             "|Description a|Public with default.%n" +
-            "|Valid values a|`public.default` is a path.%n" +
+            "|Valid values a|public.default is a path%n" +
             "|Default value m|/tmp%n" +
             "|===%n" +
             "endif::nonhtmloutput[]%n" +
@@ -107,7 +123,7 @@ public class SettingsDocumenterTest
             "[cols=\"<1h,<4\"]%n" +
             "|===%n" +
             "|Description a|Public deprecated.%n" +
-            "|Valid values a|`public.deprecated` is a path.%n" +
+            "|Valid values a|public.deprecated is a path%n" +
             "|Default value m|/tmp%n" +
             "|Deprecated a|The `public.deprecated` configuration setting has been deprecated.%n" +
             "|===%n" +
@@ -119,7 +135,7 @@ public class SettingsDocumenterTest
             "[cols=\"<1h,<4\"]%n" +
             "|===%n" +
             "|Description a|Public deprecated.%n" +
-            "|Valid values a|`public.deprecated` is a path.%n" +
+            "|Valid values a|public.deprecated is a path%n" +
             "|Default value m|/tmp%n" +
             "|Deprecated a|The `public.deprecated` configuration setting has been deprecated.%n" +
             "|===%n" +
@@ -131,7 +147,7 @@ public class SettingsDocumenterTest
             "[cols=\"<1h,<4\"]%n" +
             "|===%n" +
             "|Description a|Public nodefault.%n" +
-            "|Valid values a|`public.nodefault` is a path.%n" +
+            "|Valid values a|public.nodefault is a path%n" +
             "|===%n" +
             "endif::nonhtmloutput[]%n" +
             "%n" +
@@ -141,9 +157,81 @@ public class SettingsDocumenterTest
             "[cols=\"<1h,<4\"]%n" +
             "|===%n" +
             "|Description a|Public nodefault.%n" +
-            "|Valid values a|`public.nodefault` is a path.%n" +
+            "|Valid values a|public.nodefault is a path%n" +
             "|===%n" +
             "endif::nonhtmloutput[]%n%n" ) ));
+    }
+
+    @Test
+    public void shouldDocumentGroupConfiguration() throws Throwable
+    {
+        // when
+        String result = new SettingsDocumenter().document( Giraffe.class );
+
+        // then
+        assertThat( result, equalTo( String.format(
+            "[[config-org.neo4j.kernel.configuration.docs.SettingsDocumenterTest-Giraffe]]%n" +
+            ".Use this group to configure giraffes%n" +
+            "ifndef::nonhtmloutput[]%n" +
+            "%n" +
+            "[options=\"header\"]%n" +
+            "|===%n" +
+            "|Name|Description%n" +
+            "|<<config_group.key.spot_count,group.{key}.spot_count>>|Number of spots this giraffe has, in number.%n" +
+            "|<<config_group.key.type,group.{key}.type>>|Animal type.%n" +
+            "|===%n" +
+            "endif::nonhtmloutput[]%n" +
+            "%n" +
+            "ifdef::nonhtmloutput[]%n" +
+            "%n" +
+            "* <<config_group.key.spot_count,group.{key}.spot_count>>: Number of spots this giraffe has, in number.%n" +
+            "* <<config_group.key.type,group.{key}.type>>: Animal type.%n" +
+            "endif::nonhtmloutput[]%n" +
+            "%n" +
+            "%n" +
+            "ifndef::nonhtmloutput[]%n" +
+            "[[config_group.key.spot_count]]%n" +
+            ".group.{key}.spot_count%n" +
+            "[cols=\"<1h,<4\"]%n" +
+            "|===%n" +
+            "|Description a|Number of spots this giraffe has, in number.%n" +
+            "|Valid values a|spot_count is an integer%n" +
+            "|Default value m|12%n" +
+            "|===%n" +
+            "endif::nonhtmloutput[]%n" +
+            "%n" +
+            "ifdef::nonhtmloutput[]%n" +
+            "[[config_group.key.spot_count]]%n" +
+            ".group.{key}.spot_count%n" +
+            "[cols=\"<1h,<4\"]%n" +
+            "|===%n" +
+            "|Description a|Number of spots this giraffe has, in number.%n" +
+            "|Valid values a|spot_count is an integer%n" +
+            "|Default value m|12%n" +
+            "|===%n" +
+            "endif::nonhtmloutput[]%n" +
+            "%n" +
+            "ifndef::nonhtmloutput[]%n" +
+            "[[config_group.key.type]]%n" +
+            ".group.{key}.type%n" +
+            "[cols=\"<1h,<4\"]%n" +
+            "|===%n" +
+            "|Description a|Animal type.%n" +
+            "|Valid values a|type is a string%n" +
+            "|Default value m|giraffe%n" +
+            "|===%n" +
+            "endif::nonhtmloutput[]%n" +
+            "%n" +
+            "ifdef::nonhtmloutput[]%n" +
+            "[[config_group.key.type]]%n" +
+            ".group.{key}.type%n" +
+            "[cols=\"<1h,<4\"]%n" +
+            "|===%n" +
+            "|Description a|Animal type.%n" +
+            "|Valid values a|type is a string%n" +
+            "|Default value m|giraffe%n" +
+            "|===%n" +
+            "endif::nonhtmloutput[]%n%n"  ) ));
     }
 
     public interface SimpleSettings
@@ -161,5 +249,33 @@ public class SettingsDocumenterTest
         @Internal
         @Description("Internal with default")
         Setting<File> internal_with_default = setting("internal.default", PATH, "/tmp");
+    }
+
+    @Group( "group" )
+    public static class Animal
+    {
+        @Description( "Animal type" )
+        public final Setting<String> type;
+
+        protected final GroupSettingSupport group;
+
+        protected Animal( String key, String typeDefault )
+        {
+            group = new GroupSettingSupport( Animal.class, key );
+            type = group.scope( setting( "type", STRING, typeDefault ) );
+        }
+    }
+
+    @Description( "Use this group to configure giraffes" )
+    public static class Giraffe extends Animal
+    {
+        @Description( "Number of spots this giraffe has, in number." )
+        public final Setting<Integer> number_of_spots;
+
+        public Giraffe(String key)
+        {
+            super(key, /* type=*/"giraffe");
+            number_of_spots = group.scope( setting( "spot_count", INTEGER, "12" ));
+        }
     }
 }

@@ -54,7 +54,9 @@ public final class SettingDescription
 
     public String id()
     {
-        return "config_" + name;
+        // {key} is used for documenting group config, and this is not
+        // allowed in asciidoc references. Strip out the curlies.
+        return "config_" + (name.replace( "{", "").replace( "}", "" ) );
     }
 
     public String name()
@@ -117,7 +119,11 @@ public final class SettingDescription
                 f.apply( description ),
                 f.apply(mandatoryDescription),
                 f.apply(deprecationDescription),
-                f.apply(validationDescription),
+
+                // I don't like this, but validationdescription contains a lot of
+                // technical terms, and the formatters barf on it. Leave it out for now,
+                // which is what the old impl did, and improve the formatters at some point
+                validationDescription,
                 defaultValue,
                 isDeprecated, isMandatory, hasDefault );
     }

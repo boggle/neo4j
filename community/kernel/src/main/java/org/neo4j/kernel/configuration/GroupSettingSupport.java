@@ -105,6 +105,12 @@ public class GroupSettingSupport
                 return inner.apply( ( key ) -> config.apply( scopeToGroup( key ) ) );
             }
 
+            @Override
+            public String toString()
+            {
+                return inner.toString();
+            }
+
             private String scopeToGroup( String key )
             {
                 return String.format( "%s.%s", GroupSettingSupport.this.key, key );

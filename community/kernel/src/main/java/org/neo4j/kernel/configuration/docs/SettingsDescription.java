@@ -1,3 +1,22 @@
+/*
+ * Copyright (c) 2002-2016 "Neo Technology,"
+ * Network Engine for Objects in Lund AB [http://neotechnology.com]
+ *
+ * This file is part of Neo4j.
+ *
+ * Neo4j is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.neo4j.kernel.configuration.docs;
 
 import java.lang.reflect.Field;
@@ -9,6 +28,7 @@ import java.util.stream.Stream;
 import org.neo4j.function.Functions;
 import org.neo4j.graphdb.config.Setting;
 import org.neo4j.graphdb.factory.Description;
+import org.neo4j.kernel.configuration.Group;
 import org.neo4j.kernel.configuration.Internal;
 import org.neo4j.kernel.configuration.Obsoleted;
 
@@ -20,17 +40,28 @@ public class SettingsDescription
     /**
      * Create a description of a given class.
      */
-    public static SettingsDescription describe( Class<?> settingClass )
+    public static SettingsDescription describe( Class<?> settingClass ) throws Exception
     {
-        List<SettingDescription> settings = new LinkedList<>();
-
         String classDescription = settingClass.isAnnotationPresent( Description.class )
               ? settingClass.getAnnotation( Description.class ).value()
               : "List of configuration settings";
+        Object instance = null;
 
+        for(Class<?> cls = settingClass; cls != null; cls = cls.getSuperclass() )
+        {
+            if( cls.isAnnotationPresent( Group.class ) )
+            {
+                // Group classes are special, we need to instantiate them to read their
+                // configuration, this is how the group config DSL works
+                instance = settingClass.getConstructor( String.class ).newInstance( "{key}" );
+                break;
+            }
+        }
+
+        List<SettingDescription> settings = new LinkedList<>();
         for ( Field field : settingClass.getFields() )
         {
-            fieldAsSetting( settingClass, field ).ifPresent( (setting) -> {
+            fieldAsSetting( settingClass, instance, field ).ifPresent( (setting) -> {
                 String name = setting.name();
                 String description = field.getAnnotation( Description.class ).value();
                 String validationMessage = setting.toString();
@@ -69,17 +100,18 @@ public class SettingsDescription
         }
 
         return new SettingsDescription(
-                settingClass.getName(),
+                // Nested classes have `$` in the name, which is an asciidoc keyword
+                settingClass.getName().replace( "$", "-" ),
                 classDescription,
                 settings );
     }
 
-    private static Optional<Setting<?>> fieldAsSetting( Class<?> settingClass, Field field )
+    private static Optional<Setting<?>> fieldAsSetting( Class<?> settingClass, Object instance, Field field )
     {
         Setting<?> setting;
         try
         {
-            setting = (Setting<?>) field.get( null );
+            setting = (Setting<?>) field.get( instance );
         }
         catch ( Exception e )
         {
