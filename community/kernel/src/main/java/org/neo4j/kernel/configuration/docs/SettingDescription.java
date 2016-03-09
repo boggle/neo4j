@@ -17,28 +17,39 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.configuration;
+package org.neo4j.kernel.configuration.docs;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
- * Represents an item to be included into te generated Asciidoc.
- * Contains {@linkplain #id() id}, {@linkplain #name() name} and {@linkplain #description() description}.
+ * Represents a configuration item to be included into the generated Asciidoc.
  */
-public final class AsciiDocItem
+public final class SettingDescription
 {
     private final String name;
     private final String description;
-    private final boolean internal;
-    private final boolean deprecated;
-    private boolean mandatory;
+    private final String mandatoryDescription;
+    private final String deprecationDescription;
+    private final String validationDescription;
+    private final String defaultValue;
+    private final boolean isDeprecated;
+    private final boolean isMandatory;
+    private final boolean hasDefault;
 
-    public AsciiDocItem( String name, String description, boolean internal, boolean deprecated )
+    public SettingDescription( String name, String description, String mandatoryDescription, String deprecationDescription,
+            String validationDescription, String defaultValue,
+            boolean isDeprecated, boolean isMandatory, boolean hasDefault )
     {
-        this.internal = internal;
-        this.deprecated = deprecated;
+        this.mandatoryDescription = mandatoryDescription;
+        this.deprecationDescription = deprecationDescription;
+        this.validationDescription = validationDescription;
+        this.defaultValue = defaultValue;
+        this.isDeprecated = isDeprecated;
         this.name = name;
         this.description = description;
+        this.isMandatory = isMandatory;
+        this.hasDefault = hasDefault;
     }
 
     public String id()
@@ -56,53 +67,59 @@ public final class AsciiDocItem
         return description;
     }
 
-    public boolean isInternal()
-    {
-        return internal;
-    }
-
     public boolean isDeprecated()
     {
-        return deprecated;
+        return isDeprecated;
     }
 
     public boolean hasDefault()
     {
         //if ( !defaultValue.equals( DEFAULT_MARKER ) )
-        return false;
+        return hasDefault;
     }
 
     public String defaultValue()
     {
-        return "";
+        return defaultValue;
     }
 
     public boolean isMandatory()
     {
-        return mandatory;
+        return isMandatory;
     }
 
     public String mandatoryDescription()
     {
         // Note MANDATORY
-        return null;
+        return mandatoryDescription;
     }
 
     public String deprecationMessage()
     {
         // Note OBSOLETED & DEPRECATED
-        return null;
+        return deprecationDescription;
     }
 
     public String validationMessage()
     {
         // Note VALIDATION_MESSAGE
-        return null;
+        return validationDescription;
     }
 
-    public boolean hasValidation()
+    /**
+     * Return a new item with all prose descriptions formatted using
+     * the passed-in format.
+     */
+    public SettingDescription formatted( Function<String, String> format )
     {
-        return false;
+        Function<String,String> f = ( str ) -> str == null ? null : format.apply(str);
+        return new SettingDescription( name,
+                f.apply( description ),
+                f.apply(mandatoryDescription),
+                f.apply(deprecationDescription),
+                f.apply(validationDescription),
+                defaultValue,
+                isDeprecated, isMandatory, hasDefault );
     }
 
     @Override
@@ -116,7 +133,7 @@ public final class AsciiDocItem
         {
             return false;
         }
-        AsciiDocItem that = (AsciiDocItem) o;
+        SettingDescription that = (SettingDescription) o;
         return Objects.equals( name, that.name ) &&
                Objects.equals( description, that.description );
     }
@@ -130,6 +147,6 @@ public final class AsciiDocItem
     @Override
     public String toString()
     {
-        return "AsciiDocItem{" + "id='" + id() + "\', name='" + name + "\', description='" + description + "\'}";
+        return "SettingDescription{" + "id='" + id() + "\', name='" + name + "\', description='" + description + "\'}";
     }
 }

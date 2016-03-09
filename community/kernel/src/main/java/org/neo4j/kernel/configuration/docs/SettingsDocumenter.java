@@ -1,113 +1,143 @@
 package org.neo4j.kernel.configuration.docs;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.neo4j.kernel.configuration.AsciiDocItem;
-import org.neo4j.kernel.configuration.AsciiDocListGenerator;
 
 import static java.util.stream.Collectors.toList;
 import static org.neo4j.kernel.configuration.docs.SettingsDescription.describe;
 
 public class SettingsDocumenter
 {
-    private static final String DEFAULT_MARKER = "__DEFAULT__";
+    private static final Predicate<SettingDescription> REGULAR_SETTINGS = ( s ) -> !s.isDeprecated();
+    private static final Predicate<SettingDescription> DEPRECATED_SETTINGS = SettingDescription::isDeprecated;
+
     private static final Pattern CONFIG_SETTING_PATTERN = Pattern.compile( "[a-z0-9]+((\\.|_)[a-z0-9]+)+" );
     private static final Pattern NUMBER_OR_IP = Pattern.compile( "[0-9\\.]+" );
     private static final List<String> CONFIG_NAMES_BLACKLIST = Arrays.asList( "round_robin", "keep_all", "keep_last",
             "keep_none", "metrics.neo4j", "i.e", "e.g" );
-    static final String IFDEF_HTMLOUTPUT = "ifndef::nonhtmloutput[]\n";
-    static final String IFDEF_NONHTMLOUTPUT = "ifdef::nonhtmloutput[]\n";
-    static final String ENDIF = "endif::nonhtmloutput[]\n\n";
+    public static final String IFDEF_HTMLOUTPUT = "ifndef::nonhtmloutput[]\n";
+    public static final String IFDEF_NONHTMLOUTPUT = "ifdef::nonhtmloutput[]\n";
+    public static final String ENDIF = "endif::nonhtmloutput[]\n\n";
 
-    public void document( Class<?> settings, PrintStream out )
+    private PrintStream out;
+
+    public String document( Class<?> settings )
     {
-        String settingsResourceId = "config-" + settings.getName();
-        String bundleDescription = "List of configuration settings";
-
-        List<AsciiDocItem> regularSettings =
-                describe( settings ).settings()
-                .filter( ( setting ) -> !setting.isInternal() && !setting.isDeprecated() )
-                .collect( toList() );
-        out.println(new AsciiDocListGenerator( settingsResourceId, bundleDescription, true )
-                .generateListAndTableCombo( regularSettings ));
-
-        List<AsciiDocItem> deprecated =
-                describe( settings ).settings()
-                .filter( ( setting ) -> !setting.isInternal() && setting.isDeprecated() )
-                .collect( toList() );
-        if( deprecated.size() > 0 )
-        {
-            out.println( new AsciiDocListGenerator( settingsResourceId + "-deprecated", "Deprecated settings", true )
-                    .generateListAndTableCombo( deprecated ) );
-        }
-
-        describe( settings ).settings().forEach( (setting) -> {
-            out.print( addDocsForOneSetting( setting, false ) );
-            out.print( addDocsForOneSetting( setting, true ) );
-        });
+        return document( describe( settings ) );
     }
 
-    private String addDocsForOneSetting( AsciiDocItem item, boolean pdfOutput )
+    public String document( SettingsDescription desc )
     {
-        StringBuilder table = new StringBuilder( 1024 );
-        if ( pdfOutput )
-        {
-            table.append( IFDEF_NONHTMLOUTPUT );
-        }
-        else
-        {
-            table.append( IFDEF_HTMLOUTPUT );
-        }
-        String monospacedName = "`" + item.name() + "`";
-        table.append( "[[" )
-                .append( item.id() )
-                .append( "]]\n" )
-                .append( '.' )
-                .append( item.name() )
-                .append( '\n' )
-                .append( "[cols=\"<1h,<4\"]\n" )
-                .append( "|===\n" );
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        out = new PrintStream( baos );
 
-        table.append( "|Description a|" );
-        addWithDotAtEndAsNeeded( table, item.description() );
+        createOverviewTable( REGULAR_SETTINGS, desc.id(), desc.description(), desc );
+        createOverviewTable( DEPRECATED_SETTINGS, desc.id() + "-deprecated", "Deprecated settings", desc );
 
-        if ( item.hasValidation() )
+        desc.settings().forEach( (setting) -> {
+            documentForHTML( setting );
+            documentForPDF( setting );
+        });
+
+        out.flush();
+        return baos.toString();
+    }
+
+    /**
+     * This renders an overview table for the settings, where each item in the table
+     * links to a more in-detail description of the setting. This link works by convention,
+     * as in we depend on a {@link #documentForHTML(SettingDescription)} and {@link #documentForPDF(SettingDescription)}
+     * to render details about the setting with a matching tag.
+     */
+    private void createOverviewTable( Predicate<SettingDescription> filter, String tableId, String tableDescription,
+            SettingsDescription desc )
+    {
+        List<SettingDescription> settings = desc.settings().filter( filter ).collect( toList() );
+        if( settings.size() > 0 )
         {
-            String validation = item.validationMessage();
-            table.append( "|Valid values a|" );
-            addWithDotAtEndAsNeeded( table, replaceKeysWithLinks( validation, item.name(), pdfOutput ) );
+            out.print( new AsciiDocListGenerator( tableId, tableDescription, true )
+                    .generateListAndTableCombo( settings ) );
         }
+    }
+
+    /**
+     * Produce a detailed overview of a single setting for HTML use, this is what the links in
+     * {@link #createOverviewTable(Predicate, String, String, SettingsDescription)} lead to.
+     */
+    private void documentForHTML( SettingDescription item )
+    {
+        out.print( IFDEF_HTMLOUTPUT );
+        document( item.formatted( (p) -> formatParagraph( item.name(), p, this::settingReferenceForHTML ) )  );
+        out.print( ENDIF );
+    }
+
+    /**
+     * Produce a detailed overview of a single setting for PDF use, this is what the links in
+     * {@link #createOverviewTable(Predicate, String, String, SettingsDescription)} lead to.
+     */
+    private void documentForPDF( SettingDescription item )
+    {
+        out.print( IFDEF_NONHTMLOUTPUT );
+        document( item.formatted( (p) -> formatParagraph( item.name(), p, this::settingReferenceForPDF ) ) );
+        out.print( ENDIF );
+    }
+
+    private void document( SettingDescription item )
+    {
+        out.printf("[[%s]]%n" +
+                   ".%s%n" +
+                   "[cols=\"<1h,<4\"]%n" +
+                   "|===%n" +
+                   "|Description a|%s%n" +
+                   "|Valid values a|%s%n",
+                item.id(), item.name(),
+                item.description(), item.validationMessage() );
 
         if ( item.hasDefault() )
         {
-            table.append( "|Default value m|" )
-                    .append( item.defaultValue() )
-                    .append( '\n' );
+            out.printf("|Default value m|%s%n", item.defaultValue() );
         }
 
         if ( item.isMandatory() )
         {
-            table.append( "|Mandatory a|" );
-            addWithDotAtEndAsNeeded( table, item.mandatoryDescription().replace( item.name(), monospacedName ) );
+            out.printf( "|Mandatory a|%s%n", item.mandatoryDescription() );
         }
 
         if ( item.isDeprecated() )
         {
-            table.append( "|Deprecated a|" );
-            addWithDotAtEndAsNeeded( table,
-                    replaceKeysWithLinks( item.deprecationMessage(), item.name(), pdfOutput ) );
+            out.printf( "|Deprecated a|%s%n", item.deprecationMessage() );
         }
 
-        table.append( "|===\n" )
-                .append( ENDIF );
-        return table.toString();
+        out.printf( "|===%n" );
     }
 
-    private String replaceKeysWithLinks( String text, String nameToNotLink, boolean pdfOutput )
+    /**
+     * Cleans up a prose paragraph from a setting (for instance, the setting description)
+     * and replaces raw references to other settings with medium-appropriate links or
+     * highlights.
+     *
+     * @param settingName the setting currently being rendered, as this is formatted specially
+     * @param paragraph the prose text to "clean up"
+     * @param renderReferenceToOtherSetting how to render references to *other* settings
+     * @return the formatted paragraph
+     */
+    private String formatParagraph( String settingName, String paragraph,
+            Function<String,String> renderReferenceToOtherSetting )
+    {
+        return ensureEndsWithPeriod( transformSettingNames( paragraph, settingName, renderReferenceToOtherSetting ) );
+    }
+
+    /**
+     * Takes a blob of text, finds references to settings in the text, and transforms
+     * them with the passed-in lambda.
+     */
+    private String transformSettingNames( String text, String settingBeingRendered, Function<String,String> transform )
     {
         Matcher matcher = CONFIG_SETTING_PATTERN.matcher( text );
         StringBuffer result = new StringBuffer( 256 );
@@ -119,7 +149,7 @@ public class SettingsDocumenter
                 // a filenamne
                 match = "_" + match + "_";
             }
-            else if ( match.equals( nameToNotLink ) )
+            else if ( match.equals( settingBeingRendered ) )
             {
                 // don't link to the settings we're describing
                 match = "`" + match + "`";
@@ -134,15 +164,9 @@ public class SettingsDocumenter
             }
             else
             {
-                // replace setting name with link to setting, if not pdf output
-                if ( pdfOutput )
-                {
-                    match = "`" + match + "`";
-                }
-                else
-                {
-                    match = makeConfigXref( match );
-                }
+                // If all fall through, assume this key refers to a setting name,
+                // and render it as requested by the caller.
+                match = transform.apply( match );
             }
             matcher.appendReplacement( result, match );
         }
@@ -150,18 +174,22 @@ public class SettingsDocumenter
         return result.toString();
     }
 
-    private void addWithDotAtEndAsNeeded( StringBuilder sb, String message )
+    private String ensureEndsWithPeriod( String message )
     {
-        sb.append( message );
         if ( !message.endsWith( "." ) && !message.endsWith( ". " ) )
         {
-            sb.append( '.' );
+            message += ".";
         }
-        sb.append( '\n' );
+        return message;
     }
 
-    private String makeConfigXref( String settingName )
+    private String settingReferenceForHTML( String settingName )
     {
         return "+<<config_" + settingName + "," + settingName + ">>+";
+    }
+
+    private String settingReferenceForPDF( String settingName )
+    {
+        return "`" + settingName + "`";
     }
 }
