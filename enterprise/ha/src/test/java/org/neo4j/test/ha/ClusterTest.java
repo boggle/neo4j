@@ -130,6 +130,7 @@ public class ClusterTest
     @Test
     public void testClusterWithWildcardIP() throws Throwable
     {
+        // Comment to allow remote run
         ClusterManager clusterManager = new ClusterManager.Builder( testDirectory.directory(  "testCluster" ) )
                 .withProvider( ClusterManager.clusterOfSize( "0.0.0.0", 3 ) )
                 .withSharedConfig( stringMap(
