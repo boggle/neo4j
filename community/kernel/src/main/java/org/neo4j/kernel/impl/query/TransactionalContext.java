@@ -50,6 +50,6 @@ public interface TransactionalContext
 
     Lock acquireWriteLock( PropertyContainer p );
 
-    QuerySession.MetadataKey<TransactionalContext>
-            metadataKey = new QuerySession.MetadataKey<>( TransactionalContext.class, "transaction context" );
+    QuerySession.MetadataKey<TransactionalContext> METADATA_KEY =
+            new QuerySession.MetadataKey<>( TransactionalContext.class, "transactional-context" );
 }

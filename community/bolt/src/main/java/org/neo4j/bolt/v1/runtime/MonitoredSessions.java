@@ -48,13 +48,13 @@ public class MonitoredSessions implements Sessions
     }
 
     @Override
-    public Session newSession( boolean isEncrypted )
+    public Session newSession( String connectionDescriptor, boolean isEncrypted )
     {
         if( monitors.hasListeners( SessionMonitor.class ) )
         {
-            return new MonitoredSession( monitor, delegate.newSession( isEncrypted ), clock );
+            return new MonitoredSession( monitor, delegate.newSession( connectionDescriptor, isEncrypted ), clock );
         }
-        return delegate.newSession(isEncrypted);
+        return delegate.newSession( connectionDescriptor, isEncrypted );
     }
 
     static class MonitoredSession implements Session
@@ -74,6 +74,12 @@ public class MonitoredSessions implements Sessions
         public String key()
         {
             return delegate.key();
+        }
+
+        @Override
+        public String connectionDescriptor()
+        {
+            return delegate.connectionDescriptor();
         }
 
         @Override

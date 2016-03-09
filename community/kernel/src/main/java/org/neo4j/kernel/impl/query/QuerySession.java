@@ -30,9 +30,13 @@ import java.util.Map;
  */
 public abstract class QuerySession
 {
-    public QuerySession( TransactionalContext context )
+    public static QuerySession.MetadataKey<String>
+            QUERY_SOURCE_METADATA_KEY = new QuerySession.MetadataKey<>( String.class, "query-source" );
+
+    public QuerySession( TransactionalContext context, String querySource )
     {
-        put( TransactionalContext.metadataKey, context );
+        put( TransactionalContext.METADATA_KEY, context );
+        put( QUERY_SOURCE_METADATA_KEY, querySource );
     }
 
     private final Map<MetadataKey<?>, Object> metadata = new HashMap<>();
@@ -44,6 +48,12 @@ public abstract class QuerySession
      */
     @Override
     public abstract String toString();
+
+    protected String querySource()
+    {
+        String result = get( QUERY_SOURCE_METADATA_KEY );
+        return result == null ? "null" : result;
+    }
 
     public final <ValueType> ValueType put( MetadataKey<ValueType> key, ValueType value )
     {

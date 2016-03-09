@@ -185,7 +185,7 @@ public class QueryLoggerTest
 
     private static QuerySession session( final String data )
     {
-        return new QuerySession( null )
+        return new QuerySession( null, null )
         {
             @Override
             public String toString()

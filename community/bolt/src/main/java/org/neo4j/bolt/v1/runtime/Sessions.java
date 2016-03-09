@@ -24,10 +24,10 @@ package org.neo4j.bolt.v1.runtime;
  */
 public interface Sessions
 {
-    default Session newSession()
+    default Session newSession( String connectionDescriptor )
     {
-        return newSession( false );
+        return newSession( connectionDescriptor, false );
     }
 
-    Session newSession( boolean isEncrypted );
+    Session newSession( String connectionDescriptor, boolean isEncrypted );
 }

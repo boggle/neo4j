@@ -68,6 +68,7 @@ import org.neo4j.kernel.monitoring.Monitors;
 import org.neo4j.logging.Log;
 import org.neo4j.udc.UsageData;
 
+import static java.lang.String.format;
 import static org.neo4j.bolt.BoltKernelExtension.EncryptionLevel.OPTIONAL;
 import static org.neo4j.collection.primitive.Primitive.longObjectMap;
 import static org.neo4j.kernel.configuration.Settings.ANY;
@@ -256,7 +257,10 @@ public class BoltKernelExtension extends KernelExtensionFactory<BoltKernelExtens
         PrimitiveLongObjectMap<BiFunction<Channel,Boolean,BoltProtocol>> availableVersions = longObjectMap();
         availableVersions.put(
                 BoltProtocolV1.VERSION,
-                ( channel, isEncrypted ) -> new BoltProtocolV1( logging, sessions.newSession( isEncrypted ), channel )
+                ( channel, isEncrypted ) -> {
+                    String descriptor = format( "bolt{server=%s, client=%s}", channel.localAddress(), channel.remoteAddress() );
+                    return new BoltProtocolV1( logging, sessions.newSession( descriptor, isEncrypted ), channel );
+                }
         );
         return availableVersions;
     }

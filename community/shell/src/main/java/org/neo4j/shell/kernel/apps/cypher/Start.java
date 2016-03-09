@@ -35,8 +35,8 @@ import org.neo4j.kernel.impl.coreapi.InternalTransaction;
 import org.neo4j.kernel.impl.coreapi.PropertyContainerLocker;
 import org.neo4j.kernel.impl.query.Neo4jTransactionalContext;
 import org.neo4j.kernel.impl.query.QueryExecutionEngine;
-import org.neo4j.kernel.impl.query.QuerySession;
 import org.neo4j.kernel.impl.query.QueryExecutionKernelException;
+import org.neo4j.kernel.impl.query.QuerySession;
 import org.neo4j.kernel.impl.query.TransactionalContext;
 import org.neo4j.shell.App;
 import org.neo4j.shell.AppCommandParser;
@@ -176,14 +176,14 @@ public class Start extends TransactionProvidingApp
 
         ShellQuerySession( Session session, TransactionalContext transactionalContext )
         {
-            super( transactionalContext );
+            super( transactionalContext, String.format( "shell\t%s", session.getId() ) );
             this.session = session;
         }
 
         @Override
         public String toString()
         {
-            return String.format( "shell-session(%s)", session.getId() );
+            return String.format( "shell-session\t%s", querySource() );
         }
     }
 }

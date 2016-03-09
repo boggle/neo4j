@@ -44,6 +44,8 @@ import org.neo4j.logging.Log;
 import org.neo4j.udc.UsageData;
 import org.neo4j.udc.UsageDataKeys;
 
+import static java.lang.String.format;
+
 /**
  * State-machine based implementation of {@link Session}. With this approach,
  * the discrete states a session can be in are explicit. Each state describes which actions from the context
@@ -69,6 +71,8 @@ public class SessionStateMachine implements Session, SessionState
                         {
                             ctx.authentication.authenticate( authToken );
                             ctx.usageData.get( UsageDataKeys.clientNames ).add( clientName );
+                            Object principal = authToken.get( Authentication.PRINCIPAL );
+                            ctx.currentQuerySource = querySourceForClientAndPrincipal( ctx.connectionDescriptor(), clientName, principal );
                             return IDLE;
                         }
                         catch ( AuthenticationException e )
@@ -432,8 +436,15 @@ public class SessionStateMachine implements Session, SessionState
             ctx.error( err );
             return outcome;
         }
+
+        private static String querySourceForClientAndPrincipal( String connectionDescriptor, String clientName, Object principal )
+        {
+            String principalName = principal == null ? "null" : principal.toString();
+            return format( "bolt{principal=%s, client=%s, connection=%s}>", principalName, clientName, connectionDescriptor );
+        }
     }
 
+    private final String connectionDescriptor;
     private final UsageData usageData;
     private final DecayingFlags featureUsage;
     private final GraphDatabaseFacade db;
@@ -462,6 +473,9 @@ public class SessionStateMachine implements Session, SessionState
     /** The current transaction, if present */
     private KernelTransaction currentTransaction;
 
+    /** The principal, if authenticated (for logging only!) */
+    private String currentQuerySource;
+
     /** Callback poised to receive the next response */
     private Callback currentCallback;
 
@@ -472,9 +486,10 @@ public class SessionStateMachine implements Session, SessionState
 
     // Note: We shouldn't depend on GDB like this, I think. Better to define an SPI that we can shape into a spec
     // for exactly the kind of underlying support the state machine needs.
-    public SessionStateMachine( UsageData usageData, GraphDatabaseFacade db, ThreadToStatementContextBridge txBridge,
-            StatementRunner engine, LogService logging, Authentication authentication )
+    public SessionStateMachine( String connectionDescriptor, UsageData usageData, GraphDatabaseFacade db,
+            ThreadToStatementContextBridge txBridge, StatementRunner engine, LogService logging, Authentication authentication )
     {
+        this.connectionDescriptor = connectionDescriptor;
         this.usageData = usageData;
         this.featureUsage = usageData.get(UsageDataKeys.features);
         this.db = db;
@@ -490,6 +505,12 @@ public class SessionStateMachine implements Session, SessionState
     public String key()
     {
         return id;
+    }
+
+    @Override
+    public String connectionDescriptor()
+    {
+        return connectionDescriptor;
     }
 
     @Override
@@ -598,16 +619,7 @@ public class SessionStateMachine implements Session, SessionState
                 service.beginTransaction( currentTransaction.transactionType(), currentTransaction.mode() );
         Neo4jTransactionalContext transactionalContext =
                 new Neo4jTransactionalContext( service, transaction, txBridge.get(), locker );
-
-        return new QuerySession( transactionalContext )
-        {
-
-            @Override
-            public String toString()
-            {
-                return "bolt";
-            }
-        };
+        return new BoltQuerySession( transactionalContext, currentQuerySource );
     }
 
     public State state()
@@ -618,7 +630,7 @@ public class SessionStateMachine implements Session, SessionState
     @Override
     public String toString()
     {
-        return "Session[" + id + "," + state.name() + "]";
+        return format( "Session[%s,%s]", id, state.name() );
     }
 
     /**
@@ -702,6 +714,21 @@ public class SessionStateMachine implements Session, SessionState
         if ( currentCallback != null )
         {
             currentCallback.ignored( currentAttachment );
+        }
+    }
+
+    private static class BoltQuerySession extends QuerySession
+    {
+
+        public BoltQuerySession( Neo4jTransactionalContext transactionalContext, String querySource )
+        {
+            super( transactionalContext, querySource );
+        }
+
+        @Override
+        public String toString()
+        {
+            return format( "bolt-session\t%s", querySource() );
         }
     }
 }

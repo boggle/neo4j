@@ -24,20 +24,23 @@ import javax.servlet.http.HttpServletRequest;
 import org.neo4j.kernel.impl.query.QuerySession;
 import org.neo4j.kernel.impl.query.TransactionalContext;
 
+import static java.lang.String.format;
+
 public class ServerQuerySession extends QuerySession
 {
     private final HttpServletRequest request;
 
     public ServerQuerySession( HttpServletRequest request, TransactionalContext transactionalContext )
     {
-        super( transactionalContext );
+        super( transactionalContext, format("http\t%s\t%s", request.getRemoteAddr(), request.getRequestURI() ) );
         this.request = request;
     }
 
     @Override
     public String toString()
     {
-        return request != null ? String.format( "server-session\t%s\t%s", request.getRemoteAddr(),
-                request.getRequestURI() ) : "server-session";
+        return request == null ?
+               "server-session" :
+               format( "server-session\t", querySource() );
     }
 }
