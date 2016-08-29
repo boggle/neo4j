@@ -22,13 +22,16 @@ package org.neo4j.test;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.neo4j.test.rule.SuppressOutput;
+
 import static org.junit.Assert.assertTrue;
 
 public class DoubleLatch
 {
-    private static final int FIVE_MINUTES = 5;
+    private static final int FIVE_MINUTES = 5 * 60 * 1000;
     private final CountDownLatch startSignal;
     private final CountDownLatch finishSignal;
+    private final boolean uninterruptedWaiting;
 
     public DoubleLatch()
     {
@@ -37,25 +40,31 @@ public class DoubleLatch
 
     public DoubleLatch( int numberOfContestants )
     {
+        this( numberOfContestants, false );
+    }
+
+    public DoubleLatch( int numberOfContestants, boolean uninterruptedWaiting )
+    {
         this.startSignal = new CountDownLatch( numberOfContestants );
         this.finishSignal = new CountDownLatch( numberOfContestants );
+        this.uninterruptedWaiting = uninterruptedWaiting;
     }
 
     public void waitForAllToStart()
     {
-        awaitLatch( startSignal );
+        awaitLatch( startSignal, uninterruptedWaiting );
     }
 
     public void startAndWaitForAllToStart()
     {
         startSignal.countDown();
-        awaitLatch( startSignal );
+        awaitLatch( startSignal, uninterruptedWaiting );
     }
 
     public void startAndWaitForAllToStartAndFinish()
     {
         startAndWaitForAllToStart();
-        awaitLatch( finishSignal );
+        awaitLatch( finishSignal, uninterruptedWaiting );
     }
 
     public void finish()
@@ -71,20 +80,40 @@ public class DoubleLatch
 
     public void waitForAllToFinish()
     {
-        awaitLatch( finishSignal );
+        awaitLatch( finishSignal, uninterruptedWaiting );
     }
 
     public static void awaitLatch( CountDownLatch latch )
     {
-        try
+        awaitLatch( latch, false );
+    }
+
+    public static void awaitLatch( CountDownLatch latch, boolean uninterruptedWaiting )
+    {
+        long now = System.currentTimeMillis();
+        long deadline = now + FIVE_MINUTES;
+
+        while ( now < deadline )
         {
-            assertTrue( "Latch specified waiting time elapsed.", latch.await( FIVE_MINUTES, TimeUnit.MINUTES ) );
+            try
+            {
+
+                long waitingTime = Math.min( Math.max(0, deadline - now), 1000L );
+                latch.await( waitingTime, TimeUnit.MILLISECONDS );
+                Thread.yield();
+                return;
+            }
+            catch ( InterruptedException e )
+            {
+                Thread.interrupted();
+                if ( ! uninterruptedWaiting )
+                {
+                    throw new RuntimeException( "Thread interrupted while waiting on latch", e );
+                }
+            }
+            now = System.currentTimeMillis();
         }
-        catch ( InterruptedException e )
-        {
-            Thread.interrupted();
-            throw new RuntimeException( "Thread interrupted while waiting on latch", e );
-        }
+        throw new AssertionError( "Latch specified waiting time elapsed." );
     }
 
     @Override

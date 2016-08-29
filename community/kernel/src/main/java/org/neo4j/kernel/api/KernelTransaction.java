@@ -211,25 +211,6 @@ public interface KernelTransaction extends AutoCloseable
 
     Revertable restrict( AccessMode mode );
 
-    /**
-     * @return list of executing queries that use this transaction
-     */
-    Stream<ExecutingQuery> executingQueries();
-
-    /**
-     * Notify this transaction that a query has started to execute using it
-     *
-     * @param query descriptor for a query that was just started using this transaction
-     */
-    void registerQueryExecutionStart( ExecutingQuery query );
-
-    /**
-     * Notify this transaction that a query has stopped to execute using it
-     *
-     * @param query descriptor for a query that was just started using this transaction
-     */
-    void registerQueryExecutionStop( ExecutingQuery query );
-
     interface Revertable extends AutoCloseable
     {
         @Override
