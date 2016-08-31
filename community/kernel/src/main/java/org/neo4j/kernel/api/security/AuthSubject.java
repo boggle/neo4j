@@ -64,6 +64,12 @@ public interface AuthSubject extends AccessMode
         }
 
         @Override
+        public boolean doesUsernameMatch( String username )
+        {
+            return false;
+        }
+
+        @Override
         public boolean allowsReads()
         {
             return false;
@@ -157,5 +163,13 @@ public interface AuthSubject extends AccessMode
                 throws IOException, InvalidArgumentsException
         {
         }
+
+        @Override
+        public boolean doesUsernameMatch( String username )
+        {
+            return false;
+        }
     };
+
+    boolean doesUsernameMatch( String username );
 }
