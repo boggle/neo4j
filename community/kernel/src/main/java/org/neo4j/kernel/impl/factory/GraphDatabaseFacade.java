@@ -23,9 +23,11 @@ import java.io.File;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.neo4j.collection.primitive.PrimitiveLongCollections;
 import org.neo4j.collection.primitive.PrimitiveLongIterator;
+import org.neo4j.function.Suppliers;
 import org.neo4j.graphdb.ConstraintViolationException;
 import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.Label;
@@ -84,9 +86,11 @@ import org.neo4j.kernel.impl.coreapi.StandardRelationshipActions;
 import org.neo4j.kernel.impl.coreapi.TopLevelTransaction;
 import org.neo4j.kernel.impl.coreapi.schema.SchemaImpl;
 import org.neo4j.kernel.impl.query.Neo4jTransactionalContext;
+import org.neo4j.kernel.impl.query.Neo4jTransactionalContextFactory;
 import org.neo4j.kernel.impl.query.QueryEngineProvider;
 import org.neo4j.kernel.impl.query.QuerySession;
 import org.neo4j.kernel.impl.query.TransactionalContext;
+import org.neo4j.kernel.impl.query.TransactionalContextFactory;
 import org.neo4j.kernel.impl.store.StoreId;
 import org.neo4j.kernel.impl.traversal.BidirectionalTraversalDescriptionImpl;
 import org.neo4j.kernel.impl.traversal.MonoDirectionalTraversalDescription;
@@ -95,6 +99,7 @@ import org.neo4j.storageengine.api.EntityType;
 
 import static java.lang.String.format;
 import static org.neo4j.collection.primitive.PrimitiveLongCollections.map;
+import static org.neo4j.function.Suppliers.lazySingleton;
 import static org.neo4j.helpers.collection.Iterators.emptyIterator;
 import static org.neo4j.kernel.impl.api.operations.KeyReadOperations.NO_SUCH_LABEL;
 import static org.neo4j.kernel.impl.api.operations.KeyReadOperations.NO_SUCH_PROPERTY_KEY;
@@ -113,6 +118,7 @@ public class GraphDatabaseFacade implements GraphDatabaseAPI
     private NodeProxy.NodeActions nodeActions;
     private RelationshipProxy.RelationshipActions relActions;
     private SPI spi;
+    private Supplier<TransactionalContextFactory> contextFactorySupplier;
 
     /**
      * This is what you need to implemenent to get your very own {@link GraphDatabaseFacade}. This SPI exists as a thin
@@ -209,6 +215,7 @@ public class GraphDatabaseFacade implements GraphDatabaseAPI
                         .getOrCreateRelationshipIndex( InternalAutoIndexing.RELATIONSHIP_AUTO_INDEX, null ) ),
                 spi.autoIndexing().relationships() );
         this.indexManager = new IndexManagerImpl( spi::currentStatement, idxProvider, nodeAutoIndexer, relAutoIndexer );
+        this.contextFactorySupplier = lazySingleton( () -> new Neo4jTransactionalContextFactory( spi, locker ) );
     }
 
     @Override
@@ -353,23 +360,10 @@ public class GraphDatabaseFacade implements GraphDatabaseAPI
     public Result execute( String query, Map<String,Object> parameters ) throws QueryExecutionException
     {
         // ensure we have a tx and create a context (the tx is gonna get closed by the Cypher result)
-        InternalTransaction transaction = beginTransaction( KernelTransaction.Type.implicit, AccessMode.Static.FULL );
-        return execute( transaction, query, parameters );
-    }
-
-    // This version of execute is only needed for internal testing of LOAD CSV PERIODIC COMMIT. Can be refactored?
-    public Result execute( InternalTransaction transaction, String query, Map<String,Object> parameters )
-            throws QueryExecutionException
-    {
-        TransactionalContext transactionalContext = new Neo4jTransactionalContext(
-            spi.queryService(),
-            transaction,
-            spi.currentStatement(),
-            query,
-            parameters,
-            locker
-        );
-        return spi.executeQuery( query, parameters, QueryEngineProvider.embeddedSession( transactionalContext ) );
+        TransactionalContextFactory contextFactory = contextFactorySupplier.get();
+        TransactionalContext context =
+                contextFactory.newContext( KernelTransaction.Type.implicit, AccessMode.Static.FULL, query, parameters );
+        return spi.executeQuery( query, parameters, QueryEngineProvider.embeddedSession( context ) );
     }
 
     @Override

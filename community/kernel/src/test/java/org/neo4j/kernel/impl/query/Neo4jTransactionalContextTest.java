@@ -22,7 +22,6 @@ import static org.mockito.Mockito.when;
 
 public class Neo4jTransactionalContextTest
 {
-
     @Test
     public void neverStopsExecutingQueryDuringCommitAndRestartTx()
     {
@@ -30,8 +29,6 @@ public class Neo4jTransactionalContextTest
         GraphDatabaseQueryService graph = mock( GraphDatabaseQueryService.class );
         InternalTransaction initialTransaction = mock( InternalTransaction.class );
         KernelTransaction initialKTX = mock( KernelTransaction.class );
-        KernelTransaction.Type transactionType = null;
-        AccessMode transactionMode = null;
         Statement initialStatement = mock( Statement.class );
         MetaDataOperations initialMeta = mock( MetaDataOperations.class );
         ExecutingQuery executingQuery = mock( ExecutingQuery.class );
@@ -47,13 +44,13 @@ public class Neo4jTransactionalContextTest
         when( executingQuery.queryText() ).thenReturn( "X" );
         when( executingQuery.queryParameters() ).thenReturn( Collections.emptyMap() );
         when( initialStatement.metaOperations() ).thenReturn( initialMeta );
-        when( graph.beginTransaction( transactionType, transactionMode ) ).thenReturn( secondTransaction );
+        when( graph.beginTransaction( null, null ) ).thenReturn( secondTransaction );
         when( txBridge.getKernelTransactionBoundToThisThread( true ) ).thenReturn( initialKTX, secondKTX );
         when( txBridge.get() ).thenReturn( secondStatement );
         when( secondStatement.metaOperations() ).thenReturn( secondMeta );
 
         Neo4jTransactionalContext context = new Neo4jTransactionalContext(
-                graph, initialTransaction, transactionType, transactionMode, initialStatement, executingQuery,
+                graph, initialTransaction, initialStatement, executingQuery,
                 locker, txBridge, dbmsOperationsFactory
         );
 

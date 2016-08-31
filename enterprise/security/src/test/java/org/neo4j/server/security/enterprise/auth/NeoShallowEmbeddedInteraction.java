@@ -89,7 +89,7 @@ public class NeoShallowEmbeddedInteraction implements NeoInteractionLevel<Enterp
         try ( InternalTransaction tx = db.beginTransaction( KernelTransaction.Type.implicit, subject ) )
         {
             Map<String,Object> p = (params == null) ? Collections.emptyMap() : params;
-            resultConsumer.accept( db.execute( tx, call, p ) );
+            resultConsumer.accept( db.execute( call, p ) );
             tx.success();
             return "";
         }
