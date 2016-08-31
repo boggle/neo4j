@@ -19,11 +19,15 @@
  */
 package org.neo4j.server.security.enterprise.auth;
 
+import org.hamcrest.Matcher;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import org.neo4j.bolt.v1.transport.integration.TransportTestUtil;
 import org.neo4j.bolt.v1.transport.socket.client.SocketConnection;
@@ -36,6 +40,12 @@ import org.neo4j.test.rule.concurrent.ThreadingRule;
 import static java.lang.String.format;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.isA;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
@@ -60,6 +70,7 @@ import static org.neo4j.server.security.enterprise.auth.PredefinedRolesBuilder.A
 import static org.neo4j.server.security.enterprise.auth.PredefinedRolesBuilder.ARCHITECT;
 import static org.neo4j.server.security.enterprise.auth.PredefinedRolesBuilder.PUBLISHER;
 import static org.neo4j.server.security.enterprise.auth.PredefinedRolesBuilder.READER;
+import static org.neo4j.test.matchers.CommonMatchers.itemsMatchingExactlyOneOf;
 
 public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
 {
@@ -104,7 +115,7 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
     public void shouldListSelfTransaction()
     {
         assertSuccess( adminSubject, "CALL dbms.security.listTransactions()",
-            r -> assertKeyIsMap( r, "username", "activeTransactions", map( "adminSubject", "1" ) ) );
+                r -> assertKeyIsMap( r, "username", "activeTransactions", map( "adminSubject", "1" ) ) );
     }
 
     @Test
@@ -131,8 +142,6 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
                 r -> assertKeyIsMap( r, "username", "activeTransactions",
                         map( "adminSubject", "1", "writeSubject", "2" ) ) );
 
-        write1.finish();
-        write2.finish();
         latch.finishAndWaitForAllToFinish();
 
         write1.closeAndAssertSuccess();
@@ -160,6 +169,66 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
         }
     }
 
+    @Test
+    public void shouldListQueries() throws Throwable
+    {
+        DoubleLatch latch = new DoubleLatch( 3, true );
+        long startTime = System.currentTimeMillis();
+        ThreadedTransactionCreate<S> read1 = new ThreadedTransactionCreate<>( neo, latch );
+        ThreadedTransactionCreate<S> read2 = new ThreadedTransactionCreate<>( neo, latch );
+
+        String q1 = read1.execute( threading, readSubject, "UNWIND [1,2,3] AS x RETURN x" );
+        String q2 = read2.execute( threading, readSubject, "UNWIND [4,5,6] AS y RETURN y" );
+        latch.startAndWaitForAllToStart();
+
+        String query = "CALL dbms.listQueries()";
+        assertSuccess( adminSubject, query, r ->
+        {
+            Set<Map<String,Object>> maps = r.stream().collect( Collectors.toSet() );
+
+            Matcher<Map<String,Object>> thisQuery = listedQuery( startTime, "adminSubject", query );
+            Matcher<Map<String,Object>> matcher1 = listedQuery( startTime, "readSubject", q1 );
+            Matcher<Map<String,Object>> matcher2 = listedQuery( startTime, "readSubject", q2 );
+
+            assertThat( maps, itemsMatchingExactlyOneOf( matcher1, matcher2, thisQuery ) );
+        } );
+
+        latch.finishAndWaitForAllToFinish();
+
+        read1.closeAndAssertSuccess();
+        read2.closeAndAssertSuccess();
+    }
+
+    @Test
+    public void shouldOnlyListOwnQueriesWhenNotAdmin() throws Throwable
+    {
+        DoubleLatch latch = new DoubleLatch( 3, true );
+        long startTime = System.currentTimeMillis();
+        ThreadedTransactionCreate<S> read1 = new ThreadedTransactionCreate<>( neo, latch );
+        ThreadedTransactionCreate<S> read2 = new ThreadedTransactionCreate<>( neo, latch );
+
+        String q1 = read1.execute( threading, readSubject, "UNWIND [1,2,3] AS x RETURN x" );
+        String ignored = read2.execute( threading, writeSubject, "UNWIND [4,5,6] AS y RETURN y" );
+        latch.startAndWaitForAllToStart();
+
+        String query = "CALL dbms.listQueries()";
+        assertSuccess( readSubject, query, r ->
+        {
+            Set<Map<String,Object>> maps = r.stream().collect( Collectors.toSet() );
+
+            Matcher<Map<String,Object>> thisQuery = listedQuery( startTime, "readSubject", query );
+            Matcher<Map<String,Object>> queryMatcher = listedQuery( startTime, "readSubject", q1 );
+
+            assertThat( maps, itemsMatchingExactlyOneOf( queryMatcher, thisQuery ) );
+        } );
+
+        latch.finishAndWaitForAllToFinish();
+
+        read1.closeAndAssertSuccess();
+        read2.closeAndAssertSuccess();
+    }
+
+
     //---------- terminate transactions for user -----------
 
     @Test
@@ -176,7 +245,6 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
         assertSuccess( adminSubject, "CALL dbms.security.listTransactions()",
                 r -> assertKeyIsMap( r, "username", "activeTransactions", map( "adminSubject", "1" ) ) );
 
-        write.finish();
         latch.finishAndWaitForAllToFinish();
 
         write.closeAndAssertTransactionTermination();
@@ -202,8 +270,6 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
                 r ->  assertKeyIsMap( r, "username", "activeTransactions",
                         map( "adminSubject", "1", "writeSubject", "1" ) ) );
 
-        schema.finish();
-        write.finish();
         latch.finishAndWaitForAllToFinish();
 
         schema.closeAndAssertTransactionTermination();
@@ -230,8 +296,6 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
         assertSuccess( adminSubject, "CALL dbms.security.listTransactions()",
                 r ->  assertKeyIsMap( r, "username", "activeTransactions", map( "adminSubject", "1" ) ) );
 
-        schema1.finish();
-        schema2.finish();
         latch.finishAndWaitForAllToFinish();
 
         schema1.closeAndAssertTransactionTermination();
@@ -273,7 +337,6 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
         assertSuccess( subject, "CALL dbms.security.terminateTransactionsForUser( '" + subjectName + "' )",
                 r -> assertKeyIsMap( r, "username", "transactionsTerminated", map( subjectName, "1" ) ) );
 
-        create.finish();
         latch.finishAndWaitForAllToFinish();
 
         create.closeAndAssertTransactionTermination();
@@ -304,7 +367,6 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
         assertSuccess( adminSubject, "CALL dbms.security.listTransactions()",
                 r -> assertKeyIs( r, "username", "adminSubject", "writeSubject" ) );
 
-        write.finish();
         latch.finishAndWaitForAllToFinish();
 
         write.closeAndAssertSuccess();
@@ -435,13 +497,13 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
     {
         TransportConnection conn = startBoltSession( "writeSubject", "abc" );
         assertSuccess( adminSubject, "CALL dbms.security.listConnections() YIELD username, connectionCount " +
-                        "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount",
+                                     "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount",
                 r -> assertKeyIsMap( r, "username", "connectionCount", map( "writeSubject", IS_BOLT ? "2" : "1" ) ) );
 
         assertEmpty( adminSubject, "CALL dbms.security.changeUserPassword( 'writeSubject', 'newPassword' )" );
 
         assertEmpty( adminSubject, "CALL dbms.security.listConnections() YIELD username, connectionCount " +
-                        "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount");
+                                   "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount");
         conn.disconnect();
     }
 
@@ -577,13 +639,13 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
     {
         TransportConnection conn = startBoltSession( "writeSubject", "abc" );
         assertSuccess( adminSubject, "CALL dbms.security.listConnections() YIELD username, connectionCount " +
-                        "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount",
+                                     "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount",
                 r -> assertKeyIsMap( r, "username", "connectionCount", map( "writeSubject", IS_BOLT ? "2" : "1" ) ) );
 
         assertEmpty( adminSubject, "CALL dbms.security.deleteUser( 'writeSubject' )" );
 
         assertEmpty( adminSubject, "CALL dbms.security.listConnections() YIELD username, connectionCount " +
-                "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount");
+                                   "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount");
         conn.disconnect();
     }
 
@@ -636,13 +698,13 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
     {
         TransportConnection conn = startBoltSession( "writeSubject", "abc" );
         assertSuccess( adminSubject, "CALL dbms.security.listConnections() YIELD username, connectionCount " +
-                        "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount",
+                                     "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount",
                 r -> assertKeyIsMap( r, "username", "connectionCount", map( "writeSubject", IS_BOLT ? "2" : "1" ) ) );
 
         assertEmpty( adminSubject, "CALL dbms.security.suspendUser( 'writeSubject' )" );
 
         assertEmpty( adminSubject, "CALL dbms.security.listConnections() YIELD username, connectionCount " +
-                "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount");
+                                   "WITH username, connectionCount WHERE username = 'writeSubject' RETURN username, connectionCount");
         conn.disconnect();
     }
 
@@ -1219,7 +1281,6 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
         assertSuccess( adminSubject, "CALL dbms.security.listTransactions()",
                 r -> assertKeyIsMap( r, "username", "activeTransactions", map( "adminSubject", "1" ) ) );
 
-        userThread.finish();
         latch.finishAndWaitForAllToFinish();
 
         userThread.closeAndAssertTransactionTermination();
@@ -1239,5 +1300,47 @@ public abstract class AuthProceduresTestLogic<S> extends AuthTestBase<S>
         assertThat( connection, eventuallyReceives( new byte[]{0, 0, 0, 1} ) );
         assertThat( connection, eventuallyReceives( msgSuccess() ) );
         return connection;
+    }
+
+    //---------- matchers-----------
+    private Matcher<Map<String,Object>> listedQuery( long startTime, String username, String query )
+    {
+        return allOf(
+                hasQuery( query ),
+                hasUsername( username ),
+                hasQueryId(),
+                hasStartTimeAfter( startTime ),
+                hasNoParameters()
+        );
+    }
+    @SuppressWarnings( "unchecked" )
+    private Matcher<Map<String, Object>> hasQuery( String query )
+    {
+        return (Matcher<Map<String, Object>>) (Matcher) hasEntry( equalTo( "query" ), equalTo( query ) );
+    }
+
+    @SuppressWarnings( "unchecked" )
+    private Matcher<Map<String, Object>> hasUsername( String username )
+    {
+        return (Matcher<Map<String, Object>>) (Matcher) hasEntry( equalTo( "username" ), equalTo( username ) );
+    }
+
+    @SuppressWarnings( "unchecked" )
+    private Matcher<Map<String, Object>> hasQueryId()
+    {
+        return (Matcher<Map<String, Object>>) (Matcher) hasEntry( equalTo( "queryId" ), anyOf( (Matcher) isA( Integer.class ), isA( Long.class ) ) );
+    }
+
+    @SuppressWarnings( "unchecked" )
+    private Matcher<Map<String, Object>> hasStartTimeAfter( long base )
+    {
+        // TODO
+        return (Matcher<Map<String, Object>>) (Matcher) hasEntry( equalTo( "startTime" ), allOf( isA( Long.class ), greaterThanOrEqualTo( base ) ) );
+    }
+
+    @SuppressWarnings( "unchecked" )
+    private Matcher<Map<String, Object>> hasNoParameters()
+    {
+        return (Matcher<Map<String, Object>>) (Matcher) hasEntry( equalTo( "parameters" ), equalTo ( Collections.emptyMap() ) );
     }
 }
