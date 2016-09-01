@@ -28,7 +28,8 @@ import org.neo4j.test.TestEnterpriseGraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 import org.neo4j.test.rule.SuppressOutput;
 
-public class BoltBuiltInProceduresInteractionTest extends BuiltInProceduresInteractionTestBase<BoltInteraction.BoltSubject>
+public class BoltBuiltInProceduresInteractionTest
+        extends BuiltInProceduresInteractionTestBase<BoltInteraction.BoltSubject>
 {
     private Neo4jWithSocket server = new Neo4jWithSocket( getTestGraphDatabaseFactory(),
             settings -> settings.put( GraphDatabaseSettings.auth_enabled, "true" ) );

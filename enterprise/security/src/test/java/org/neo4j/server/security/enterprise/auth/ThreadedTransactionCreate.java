@@ -19,10 +19,13 @@
  */
 package org.neo4j.server.security.enterprise.auth;
 
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.neo4j.graphdb.Result;
+import org.neo4j.kernel.api.KernelTransaction;
 import org.neo4j.kernel.impl.coreapi.InternalTransaction;
 import org.neo4j.test.DoubleLatch;
 import org.neo4j.test.NamedFunction;
@@ -52,6 +55,11 @@ public class ThreadedTransactionCreate<S>
 
     String execute( ThreadingRule threading, S subject, String query )
     {
+        return execute( threading, KernelTransaction.Type.explicit, null, subject, query );
+    }
+
+    String execute( ThreadingRule threading, KernelTransaction.Type ktxType, AtomicBoolean drain, S subject, String query )
+    {
         NamedFunction<S, Throwable> startTransaction =
                 new NamedFunction<S, Throwable>( "start-transaction-" + query.hashCode() )
                 {
@@ -60,10 +68,11 @@ public class ThreadedTransactionCreate<S>
                     {
                         try
                         {
-                            try ( InternalTransaction tx = neo.startTransactionAsUser( subject ) )
+                            try ( InternalTransaction tx = neo.beginGraphFacadeTransactionAsUser( ktxType, subject ) )
                             {
-                                Result result = neo.getGraph().execute( query );
+                                Result result = neo.getGraphFacade().execute( tx, query, Collections.emptyMap() );
                                 latch.startAndWaitForAllToStart();
+                                while (drain != null && drain.get() && result.hasNext()) result.next();
                                 latch.finishAndWaitForAllToFinish();
                                 result.close();
                                 tx.success();

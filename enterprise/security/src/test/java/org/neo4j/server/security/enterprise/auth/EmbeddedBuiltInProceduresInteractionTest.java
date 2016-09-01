@@ -17,32 +17,16 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.server.rest.security;
+package org.neo4j.server.security.enterprise.auth;
 
-import org.junit.Rule;
+import org.neo4j.kernel.enterprise.api.security.EnterpriseAuthSubject;
 
-import org.neo4j.server.security.enterprise.auth.BuiltInProceduresInteractionTestBase;
-import org.neo4j.server.security.enterprise.auth.NeoInteractionLevel;
-import org.neo4j.test.rule.SuppressOutput;
-
-import static org.neo4j.test.rule.SuppressOutput.suppressAll;
-
-public class RESTBuiltInProceduresIT extends BuiltInProceduresInteractionTestBase<RESTSubject>
+public class EmbeddedBuiltInProceduresInteractionTest
+        extends BuiltInProceduresInteractionTestBase<EnterpriseAuthSubject>
 {
-    @Rule
-    public SuppressOutput suppressOutput = suppressAll();
-
-    public RESTBuiltInProceduresIT()
-    {
-        super();
-        CHANGE_PWD_ERR_MSG = "User is required to change their password.";
-        PWD_CHANGE_CHECK_FIRST = true;
-        IS_EMBEDDED = false;
-    }
-
     @Override
-    public NeoInteractionLevel<RESTSubject> setUpNeoServer() throws Throwable
+    protected NeoInteractionLevel<EnterpriseAuthSubject> setUpNeoServer() throws Throwable
     {
-        return new RESTInteraction();
+        return new EmbeddedInteraction();
     }
 }

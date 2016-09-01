@@ -68,18 +68,21 @@ public class EmbeddedInteraction implements NeoInteractionLevel<EnterpriseAuthSu
     }
 
     @Override
-    public EnterpriseUserManager getManager()
+    public EnterpriseUserManager getUserManager()
     {
         return userManager;
     }
 
     @Override
-    public GraphDatabaseFacade getGraph() { return db; }
+    public GraphDatabaseFacade getGraphFacade() { return db; }
 
     @Override
-    public InternalTransaction startTransactionAsUser( EnterpriseAuthSubject subject ) throws Throwable
+    public InternalTransaction beginGraphFacadeTransactionAsUser(
+            KernelTransaction.Type ktxType,
+            EnterpriseAuthSubject subject
+    ) throws Throwable
     {
-        return db.beginTransaction( KernelTransaction.Type.explicit, subject );
+        return db.beginTransaction( ktxType, subject );
     }
 
     @Override

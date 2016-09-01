@@ -88,10 +88,10 @@ public class QueryLoggerIT
         EmbeddedInteraction db = new EmbeddedInteraction( databaseBuilder );
 
         // create users
-        db.getManager().newUser( "mats", "neo4j", false );
-        db.getManager().newUser( "andres", "neo4j", false );
-        db.getManager().addRoleToUser( "architect", "mats" );
-        db.getManager().addRoleToUser( "reader", "andres" );
+        db.getUserManager().newUser( "mats", "neo4j", false );
+        db.getUserManager().newUser( "andres", "neo4j", false );
+        db.getUserManager().addRoleToUser( "architect", "mats" );
+        db.getUserManager().addRoleToUser( "reader", "andres" );
 
         EnterpriseAuthSubject mats = db.login( "mats", "neo4j" );
 

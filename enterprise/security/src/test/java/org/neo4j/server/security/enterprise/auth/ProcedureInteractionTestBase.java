@@ -109,9 +109,9 @@ abstract class ProcedureInteractionTestBase<S>
     {
         Neo4jWithSocket.cleanupTemporaryTestFiles();
         neo = setUpNeoServer();
-        neo.getGraph().getDependencyResolver().resolveDependency( Procedures.class )
+        neo.getGraphFacade().getDependencyResolver().resolveDependency( Procedures.class )
                 .register( ClassWithProcedures.class );
-        userManager = neo.getManager();
+        userManager = neo.getUserManager();
 
         userManager.newUser( "noneSubject", "abc", false );
         userManager.newUser( "pwdSubject", "abc", true );
@@ -420,17 +420,17 @@ abstract class ProcedureInteractionTestBase<S>
         return connection;
     }
 
-    private static class CountResult
+    public  static class CountResult
     {
         public final String count;
 
-        CountResult( Long count )
+        public CountResult( Long count )
         {
             this.count = ""+count;
         }
     }
 
-    static class ClassWithProcedures
+    public static class ClassWithProcedures
     {
         @Context
         public GraphDatabaseService db;
@@ -496,13 +496,13 @@ abstract class ProcedureInteractionTestBase<S>
             }
         }
 
-        static class LatchedRunnables implements AutoCloseable
+        public static class LatchedRunnables implements AutoCloseable
         {
-            DoubleLatch doubleLatch;
-            Runnable runBefore;
-            Runnable runAfter;
+            public DoubleLatch doubleLatch;
+            public Runnable runBefore;
+            public Runnable runAfter;
 
-            LatchedRunnables( DoubleLatch doubleLatch, Runnable runBefore, Runnable runAfter )
+            public LatchedRunnables( DoubleLatch doubleLatch, Runnable runBefore, Runnable runAfter )
             {
                 this.doubleLatch = doubleLatch;
                 this.runBefore = runBefore;

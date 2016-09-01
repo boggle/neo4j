@@ -46,6 +46,11 @@ public class DoubleLatch
         this.uninterruptedWaiting = uninterruptedWaiting;
     }
 
+    public void start()
+    {
+        startSignal.countDown();
+    }
+
     public void waitForAllToStart()
     {
         awaitLatch( startSignal, uninterruptedWaiting );

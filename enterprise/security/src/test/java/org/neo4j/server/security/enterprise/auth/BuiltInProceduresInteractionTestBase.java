@@ -19,20 +19,31 @@
  */
 package org.neo4j.server.security.enterprise.auth;
 
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.hamcrest.Matcher;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
+import org.neo4j.kernel.api.KernelTransaction;
 import org.neo4j.test.DoubleLatch;
 import org.neo4j.test.rule.concurrent.ThreadingRule;
 
+import static java.lang.String.format;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
@@ -40,6 +51,7 @@ import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.isA;
 import static org.neo4j.helpers.collection.MapUtil.map;
 import static org.neo4j.kernel.api.security.AuthenticationResult.PASSWORD_CHANGE_REQUIRED;
@@ -144,6 +156,89 @@ public abstract class BuiltInProceduresInteractionTestBase<S> extends ProcedureI
 
         read1.closeAndAssertSuccess();
         read2.closeAndAssertSuccess();
+    }
+
+    @SuppressWarnings( "unchecked" )
+    @Test
+    public void shouldListQueriesEvenIfUsingPeriodicCommit() throws Throwable
+    {
+        // Given
+        final DoubleLatch latch = new DoubleLatch( 2, true );
+        final AtomicBoolean keepGoing = new AtomicBoolean( true );
+
+        // Serve CSV via local web server
+        Server server = new Server( 10001 );
+        // uncomment to see errors from jetty on stderr
+        // server.dumpStdErr();
+        server.setHandler( new AbstractHandler()
+        {
+            @Override
+            public void handle(
+                    String target,
+                    Request baseRequest,
+                    HttpServletRequest request,
+                    HttpServletResponse response
+            ) throws IOException, ServletException
+            {
+                response.setContentType( "text/plain; charset=utf-8" );
+                response.setStatus( HttpServletResponse.SC_OK );
+                PrintWriter out = response.getWriter();
+
+                int i = 0;
+                while( keepGoing.get() )
+                {
+                    // System.out.println(i);
+                    try
+                    {
+                        Thread.sleep( 25 );
+                    }
+                    catch ( InterruptedException e )
+                    {
+                        Thread.interrupted();
+                    }
+                    out.write( format( "%d %d\n", i, i*i ) );
+                    i++;
+                }
+                baseRequest.setHandled(true);
+            }
+        } );
+        String startTime = OffsetDateTime.now().format( ISO_OFFSET_DATE_TIME );
+
+        // When
+        ThreadedTransactionCreate<S> write = new ThreadedTransactionCreate<>( neo, latch );
+        server.start();
+        try
+        {
+            String writeQuery = write.execute( threading, KernelTransaction.Type.implicit, keepGoing, writeSubject,
+                    "USING PERIODIC COMMIT 10 LOAD CSV FROM 'http://localhost:10001' AS line " +
+                    "CREATE (n:A {id: line[0], square: line[1]}) " +
+                    "RETURN count(n)"
+            );
+            latch.startAndWaitForAllToStart();
+
+            // Then
+            String query = "CALL dbms.listQueries()";
+            assertSuccess( adminSubject, query, r ->
+            {
+                Set<Map<String,Object>> maps = r.stream().collect( Collectors.toSet() );
+
+                Matcher<Map<String,Object>> thisMatcher = listedQuery( startTime, "adminSubject", query );
+                Matcher<Map<String,Object>> writeMatcher = listedQuery( startTime, "writeSubject", writeQuery );
+
+                assertThat( maps, hasItem( thisMatcher ) );
+                assertThat( maps, hasItem( writeMatcher ) );
+            } );
+        }
+        finally
+        {
+            // When
+            keepGoing.set( false );
+            latch.finishAndWaitForAllToFinish();
+            server.stop();
+
+            // Then
+            write.closeAndAssertSuccess();
+        }
     }
 
     @Test
