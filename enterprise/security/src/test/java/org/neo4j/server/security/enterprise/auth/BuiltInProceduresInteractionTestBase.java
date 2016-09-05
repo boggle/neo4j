@@ -31,21 +31,24 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.OffsetDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.neo4j.kernel.api.KernelTransaction;
+import org.neo4j.test.Barrier;
 import org.neo4j.test.DoubleLatch;
 import org.neo4j.test.rule.concurrent.ThreadingRule;
 
 import static java.lang.String.format;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+import static java.util.stream.Collectors.toList;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
@@ -55,8 +58,8 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.isA;
 import static org.neo4j.graphdb.security.AuthorizationViolationException.PERMISSION_DENIED;
+import static org.neo4j.helpers.collection.Iterables.single;
 import static org.neo4j.helpers.collection.MapUtil.map;
-import static org.neo4j.server.security.auth.AuthProceduresIT.assertKeyIsMap;
 import static org.neo4j.test.matchers.CommonMatchers.matchesOneToOneInAnyOrder;
 
 public abstract class BuiltInProceduresInteractionTestBase<S> extends ProcedureInteractionTestBase<S>
@@ -137,7 +140,7 @@ public abstract class BuiltInProceduresInteractionTestBase<S> extends ProcedureI
         ThreadedTransactionCreate<S> read2 = new ThreadedTransactionCreate<>( neo, latch );
 
         String q1 = read1.execute( threading, readSubject, "UNWIND [1,2,3] AS x RETURN x" );
-        String q2 = read2.execute( threading, readSubject, "UNWIND [4,5,6] AS y RETURN y" );
+        String q2 = read2.execute( threading, writeSubject, "UNWIND [4,5,6] AS y RETURN y" );
         latch.startAndWaitForAllToStart();
 
         String query = "CALL dbms.listQueries()";
@@ -147,7 +150,7 @@ public abstract class BuiltInProceduresInteractionTestBase<S> extends ProcedureI
 
             Matcher<Map<String,Object>> thisQuery = listedQuery( startTime, "adminSubject", query );
             Matcher<Map<String,Object>> matcher1 = listedQuery( startTime, "readSubject", q1 );
-            Matcher<Map<String,Object>> matcher2 = listedQuery( startTime, "readSubject", q2 );
+            Matcher<Map<String,Object>> matcher2 = listedQuery( startTime, "writeSubject", q2 );
 
             assertThat( maps, matchesOneToOneInAnyOrder( matcher1, matcher2, thisQuery ) );
         } );
@@ -191,54 +194,55 @@ public abstract class BuiltInProceduresInteractionTestBase<S> extends ProcedureI
     @Test
     public void shouldListQueriesEvenIfUsingPeriodicCommit() throws Throwable
     {
-        // Spawns a throttled HTTP server, runs a PERIODIC COMMIT that fetches data from this server,
-        // and checks that the query is visible when using listQueries()
-
-        // Given
-        final DoubleLatch latch = new DoubleLatch( 2, true );
-        final AtomicBoolean keepGoing = new AtomicBoolean( true );
-
-        // Serve CSV via local web server, let Jetty find a random port for us
-        Server server = createHttpServer( keepGoing );
-        server.start();
-        int localPort = getLocalPort(server);
-
-        String startTime = OffsetDateTime.now().format( ISO_OFFSET_DATE_TIME );
-
-        // When
-        ThreadedTransactionCreate<S> write = new ThreadedTransactionCreate<>( neo, latch );
-
-        try
+        for ( int i = 8; i <= 11; i++ )
         {
-            String writeQuery = write.execute( threading, writeSubject, KernelTransaction.Type.implicit, keepGoing,
-                    format( "USING PERIODIC COMMIT 10 LOAD CSV FROM 'http://localhost:%d' AS line ", localPort ) +
-                            "CREATE (n:A {id: line[0], square: line[1]}) " +
-                            "RETURN count(n)"
-            );
-            latch.startAndWaitForAllToStart();
+            // Spawns a throttled HTTP server, runs a PERIODIC COMMIT that fetches data from this server,
+            // and checks that the query is visible when using listQueries()
 
-            // Then
-            String query = "CALL dbms.listQueries()";
-            assertSuccess( adminSubject, query, r ->
-            {
-                Set<Map<String,Object>> maps = r.stream().collect( Collectors.toSet() );
+            // Given
+            final DoubleLatch latch = new DoubleLatch( 3, true );
+            final Barrier.Control barrier = new Barrier.Control();
 
-                Matcher<Map<String,Object>> thisMatcher = listedQuery( startTime, "adminSubject", query );
-                Matcher<Map<String,Object>> writeMatcher = listedQuery( startTime, "writeSubject", writeQuery );
+            // Serve CSV via local web server, let Jetty find a random port for us
+            Server server = createHttpServer( latch, barrier, i, 50-i );
+            server.start();
+            int localPort = getLocalPort( server );
 
-                assertThat( maps, hasItem( thisMatcher ) );
-                assertThat( maps, hasItem( writeMatcher ) );
-            } );
-        }
-        finally
-        {
+            String startTime = OffsetDateTime.now().format( ISO_OFFSET_DATE_TIME );
+
             // When
-            keepGoing.set( false );
-            latch.finishAndWaitForAllToFinish();
-            server.stop();
+            ThreadedTransactionCreate<S> write = new ThreadedTransactionCreate<>( neo, latch );
 
-            // Then
-            write.closeAndAssertSuccess();
+            try
+            {
+                String writeQuery = write.executeEarly( threading, writeSubject, KernelTransaction.Type.implicit,
+                        format( "USING PERIODIC COMMIT 10 LOAD CSV FROM 'http://localhost:%d' AS line ", localPort ) +
+                                "CREATE (n:A {id: line[0], square: line[1]}) " + "RETURN count(*)" );
+                latch.startAndWaitForAllToStart();
+
+                // Then
+                String query = "CALL dbms.listQueries()";
+                assertSuccess( adminSubject, query, r ->
+                {
+                    Set<Map<String,Object>> maps = r.stream().collect( Collectors.toSet() );
+
+                    Matcher<Map<String,Object>> thisMatcher = listedQuery( startTime, "adminSubject", query );
+                    Matcher<Map<String,Object>> writeMatcher = listedQuery( startTime, "writeSubject", writeQuery );
+
+                    assertThat( maps, hasItem( thisMatcher ) );
+                    assertThat( maps, hasItem( writeMatcher ) );
+                } );
+            }
+            finally
+            {
+                // When
+                barrier.release();
+                latch.finishAndWaitForAllToFinish();
+                server.stop();
+
+                // Then
+                write.closeAndAssertSuccess();
+            }
         }
     }
 
@@ -248,7 +252,9 @@ public abstract class BuiltInProceduresInteractionTestBase<S> extends ProcedureI
 
     }
 
-    private Server createHttpServer( final AtomicBoolean keepGoing )
+    private Server createHttpServer(
+            DoubleLatch outerLatch, Barrier.Control innerBarrier,
+            int firstBatchSize, int otherBatchSize )
     {
         Server server = new Server( 0 );
         server.setHandler( new AbstractHandler()
@@ -265,24 +271,217 @@ public abstract class BuiltInProceduresInteractionTestBase<S> extends ProcedureI
                 response.setStatus( HttpServletResponse.SC_OK );
                 PrintWriter out = response.getWriter();
 
-                int i = 0;
-                while( keepGoing.get() )
+                writeBatch( out, firstBatchSize );
+                out.flush();
+                outerLatch.start();
+
+                innerBarrier.reached();
+
+                outerLatch.finish();
+                writeBatch( out, otherBatchSize );
+                baseRequest.setHandled(true);
+            }
+
+            private void writeBatch( PrintWriter out, int batchSize )
+            {
+                for ( int i = 0; i < batchSize; i++ )
                 {
-                    try
-                    {
-                        Thread.sleep( 25 );
-                    }
-                    catch ( InterruptedException e )
-                    {
-                        Thread.interrupted();
-                    }
                     out.write( format( "%d %d\n", i, i*i ) );
                     i++;
                 }
-                baseRequest.setHandled(true);
             }
         } );
         return server;
+    }
+
+    //---------- terminate query -----------
+
+    @Test
+    public void shouldTerminateQueryAsAdmin() throws Throwable
+    {
+        DoubleLatch latch = new DoubleLatch( 3 );
+        ThreadedTransactionCreate<S> read1 = new ThreadedTransactionCreate<>( neo, latch );
+        ThreadedTransactionCreate<S> read2 = new ThreadedTransactionCreate<>( neo, latch );
+        String q1 = read1.execute( threading, readSubject, "UNWIND [1,2,3] AS x RETURN x" );
+        String q2 = read2.execute( threading, readSubject, "UNWIND [4,5,6] AS y RETURN y" );
+        latch.startAndWaitForAllToStart();
+
+        Number id1 = getIdOfQuery( q1 );
+
+        assertSuccess(
+            adminSubject,
+            "CALL dbms.terminateQuery(" + id1 + ") YIELD username " +
+            "RETURN count(username) AS count, username", r ->
+            {
+                List<Map<String,Object>> actual = r.stream().collect( toList() );
+                Matcher<Map<String,Object>> mapMatcher = allOf(
+                        (Matcher) hasEntry( equalTo( "count" ), anyOf( equalTo( 1 ), equalTo( 1L ) ) ),
+                        (Matcher) hasEntry( equalTo( "username" ), equalTo( "readSubject" ) )
+                );
+                assertThat( actual, matchesOneToOneInAnyOrder( mapMatcher ) );
+            }
+        );
+
+        latch.finishAndWaitForAllToFinish();
+        read1.closeAndAssertTransactionTermination();
+        read2.closeAndAssertSuccess();
+
+        assertEmpty(
+            adminSubject,
+            "CALL dbms.listQueries() YIELD query WITH * WHERE NOT query CONTAINS 'listQueries' RETURN *" );
+    }
+
+    @Test
+    public void shouldTerminateQueryAsUser() throws Throwable
+    {
+        DoubleLatch latch = new DoubleLatch( 3 );
+        ThreadedTransactionCreate<S> read = new ThreadedTransactionCreate<>( neo, latch );
+        ThreadedTransactionCreate<S> write = new ThreadedTransactionCreate<>( neo, latch );
+        String q1 = read.execute( threading, readSubject, "UNWIND [1,2,3] AS x RETURN x" );
+        String q2 = write.execute( threading, writeSubject, "UNWIND [4,5,6] AS y RETURN y" );
+        latch.startAndWaitForAllToStart();
+
+        Number id1 = getIdOfQuery( q1 );
+
+        assertSuccess(
+                readSubject,
+                "CALL dbms.terminateQuery(" + id1 + ") YIELD username " +
+                "RETURN count(username) AS count, username", r ->
+                {
+                    List<Map<String,Object>> actual = r.stream().collect( toList() );
+                    Matcher<Map<String,Object>> mapMatcher = allOf(
+                            (Matcher) hasEntry( equalTo( "count" ), anyOf( equalTo( 1 ), equalTo( 1L ) ) ),
+                            (Matcher) hasEntry( equalTo( "username" ), equalTo( "readSubject" ) )
+                    );
+                    assertThat( actual, matchesOneToOneInAnyOrder( mapMatcher ) );
+                }
+        );
+
+        latch.finishAndWaitForAllToFinish();
+        read.closeAndAssertTransactionTermination();
+        write.closeAndAssertSuccess();
+
+        assertEmpty(
+            adminSubject,
+            "CALL dbms.listQueries() YIELD query WITH * WHERE NOT query CONTAINS 'listQueries' RETURN *" );
+    }
+
+    @Test
+    public void shouldSelfTerminateQuery() throws Throwable
+    {
+        String result = neo.executeQuery(
+            readSubject,
+            "WITH 'Hello' AS marker CALL dbms.listQueries() YIELD queryId AS id, query " +
+            "WITH * WHERE query CONTAINS 'Hello' CALL dbms.terminateQuery(id) YIELD username " +
+            "RETURN count(username) AS count, username",
+            Collections.emptyMap(),
+            r -> {}
+        );
+
+        assertThat( result, containsString( "Explicitly terminated by the user." ) );
+
+        assertEmpty(
+            adminSubject,
+            "CALL dbms.listQueries() YIELD query WITH * WHERE NOT query CONTAINS 'listQueries' RETURN *" );
+    }
+
+    @Test
+    public void shouldFailToTerminateOtherUsersQuery() throws Throwable
+    {
+        DoubleLatch latch = new DoubleLatch( 3, true );
+        ThreadedTransactionCreate<S> read = new ThreadedTransactionCreate<>( neo, latch );
+        ThreadedTransactionCreate<S> write = new ThreadedTransactionCreate<>( neo, latch );
+        String q1 = read.execute( threading, readSubject, "UNWIND [1,2,3] AS x RETURN x" );
+        write.execute( threading, writeSubject, "UNWIND [4,5,6] AS y RETURN y" );
+        latch.startAndWaitForAllToStart();
+
+        try
+        {
+            Number id1 = getIdOfQuery( q1 );
+            assertFail(
+                writeSubject,
+                "CALL dbms.terminateQuery(" + id1.intValue() + ") YIELD username RETURN *",
+                PERMISSION_DENIED );
+            latch.finishAndWaitForAllToFinish();
+            read.closeAndAssertSuccess();
+            write.closeAndAssertSuccess();
+        }
+        catch (Throwable t)
+        {
+            latch.finishAndWaitForAllToFinish();
+            throw t;
+        }
+
+        assertEmpty(
+            adminSubject,
+            "CALL dbms.listQueries() YIELD query WITH * WHERE NOT query CONTAINS 'listQueries' RETURN *" );
+    }
+
+    @SuppressWarnings( "unchecked" )
+    @Test
+    public void shouldTerminateQueriesEvenIfUsingPeriodicCommit() throws Throwable
+    {
+        for ( int i = 8; i <= 11; i++ )
+        {
+            // Spawns a throttled HTTP server, runs a PERIODIC COMMIT that fetches data from this server,
+            // and checks that the query is visible when using listQueries()
+
+            // Given
+            final DoubleLatch latch = new DoubleLatch( 3, true );
+            final Barrier.Control barrier = new Barrier.Control();
+
+            // Serve CSV via local web server, let Jetty find a random port for us
+            Server server = createHttpServer( latch, barrier, i, 50-i );
+            server.start();
+            int localPort = getLocalPort( server );
+
+            // When
+            ThreadedTransactionCreate<S> write = new ThreadedTransactionCreate<>( neo, latch );
+
+            try
+            {
+                String writeQuery = write.executeEarly( threading, writeSubject, KernelTransaction.Type.implicit,
+                        format( "USING PERIODIC COMMIT 10 LOAD CSV FROM 'http://localhost:%d' AS line ", localPort ) +
+                                "CREATE (n:A {id: line[0], square: line[1]}) RETURN count(*)" );
+                latch.startAndWaitForAllToStart();
+
+                // Then
+                Number writeQueryId = getIdOfQuery( writeQuery );
+
+                assertSuccess(
+                        adminSubject,
+                        "CALL dbms.terminateQuery(" + writeQueryId + ") YIELD username " +
+                        "RETURN count(username) AS count, username", r ->
+                        {
+                            List<Map<String,Object>> actual = r.stream().collect( toList() );
+                            Matcher<Map<String,Object>> mapMatcher = allOf(
+                                    (Matcher) hasEntry( equalTo( "count" ), anyOf( equalTo( 1 ), equalTo( 1L ) ) ),
+                                    (Matcher) hasEntry( equalTo( "username" ), equalTo( "writeSubject" ) )
+                            );
+                            assertThat( actual, matchesOneToOneInAnyOrder( mapMatcher ) );
+                        }
+                );
+            }
+            finally
+            {
+                // When
+                barrier.release();
+                latch.finishAndWaitForAllToFinish();
+                server.stop();
+
+                // Then
+                write.closeAndAssertTransactionTermination();
+            }
+        }
+    }
+
+    private Number getIdOfQuery( String writeQuery )
+    {
+        return (Number) single( collectSuccessResult( adminSubject, "CALL dbms.listQueries()" )
+                .stream()
+                .filter( m -> m.get( "query" ).equals( writeQuery ) )
+                .collect( toList() )
+        ).get( "queryId" );
     }
 
     //---------- terminate transactions for user -----------
