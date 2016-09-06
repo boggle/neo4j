@@ -475,7 +475,7 @@ public abstract class BuiltInProceduresInteractionTestBase<S> extends ProcedureI
         }
     }
 
-    private Number getIdOfQuery( String writeQuery )
+    protected Number getIdOfQuery( String writeQuery )
     {
         return (Number) single( collectSuccessResult( adminSubject, "CALL dbms.listQueries()" )
                 .stream()
