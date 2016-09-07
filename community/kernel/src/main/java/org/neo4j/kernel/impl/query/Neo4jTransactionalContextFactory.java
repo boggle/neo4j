@@ -65,7 +65,10 @@ public class Neo4jTransactionalContextFactory implements TransactionalContextFac
     )
     {
         Statement statement = txBridge.get();
-        ExecutingQuery executingQuery = statement.queryRegistration().startQueryExecution( queryText, queryParameters );
+        QuerySourceDescriptor enrichedDescriptor = descriptor.append( tx.mode().name() );
+        ExecutingQuery executingQuery = statement.queryRegistration().startQueryExecution(
+            enrichedDescriptor, queryText, queryParameters
+        );
         return new Neo4jTransactionalContext(
             queryService,
             tx,
