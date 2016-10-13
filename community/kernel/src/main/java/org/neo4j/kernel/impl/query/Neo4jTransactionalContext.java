@@ -50,6 +50,7 @@ public class Neo4jTransactionalContext implements TransactionalContext
     private Statement statement;
     private ExecutingQuery executingQuery;
     private PropertyContainerLocker locker;
+    private ReadOperations readOperations;
 
     private boolean isOpen = true;
 
@@ -88,7 +89,11 @@ public class Neo4jTransactionalContext implements TransactionalContext
     @Override
     public ReadOperations readOperations()
     {
-        return statement.readOperations();
+        if ( this.readOperations == null )
+        {
+            this.readOperations = statement.readOperations();
+        }
+        return this.readOperations;
     }
 
     @Override
@@ -126,6 +131,7 @@ public class Neo4jTransactionalContext implements TransactionalContext
             finally
             {
                 statement = null;
+                readOperations = null;
                 transaction = null;
                 isOpen = false;
             }
@@ -155,6 +161,7 @@ public class Neo4jTransactionalContext implements TransactionalContext
         // (2) Create, bind, register, and unbind new transaction
         transaction = graph.beginTransaction( transactionType, mode );
         statement = txBridge.get();
+        readOperations = null;
         statement.queryRegistration().registerExecutingQuery( executingQuery );
         KernelTransaction kernelTx = txBridge.getKernelTransactionBoundToThisThread( true );
         txBridge.unbindTransactionFromCurrentThread();
@@ -191,6 +198,7 @@ public class Neo4jTransactionalContext implements TransactionalContext
         statement.queryRegistration().unregisterExecutingQuery( executingQuery );
         statement.close();
         statement = txBridge.get();
+        readOperations = null;
         statement.queryRegistration().registerExecutingQuery( executingQuery );
     }
 

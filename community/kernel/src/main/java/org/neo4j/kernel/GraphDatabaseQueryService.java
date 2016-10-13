@@ -45,6 +45,8 @@ public interface GraphDatabaseQueryService
 
     Node getNodeById( long id );
 
+    Node unsafeGetNodeById( long id );
+
     Relationship getRelationshipById( long id );
 
     /**

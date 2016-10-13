@@ -177,6 +177,11 @@ public class ReadOnlyGraphDatabaseProxy implements GraphDatabaseService, GraphDa
     }
 
     @Override
+    public Node unsafeGetNodeById(long id) {
+        return new ReadOnlyNodeProxy( actual.unsafeGetNodeById( id ) );
+    }
+
+    @Override
     public Relationship getRelationshipById( long id )
     {
         return new ReadOnlyRelationshipProxy( actual.getRelationshipById( id ) );

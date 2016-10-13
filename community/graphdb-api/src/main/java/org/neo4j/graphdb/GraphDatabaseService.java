@@ -74,6 +74,8 @@ public interface GraphDatabaseService
      */
     Node getNodeById( long id );
 
+    Node unsafeGetNodeById( long id );
+
     /**
      * Looks up a relationship by id. Please note: Neo4j reuses its internal ids
      * when nodes and relationships are deleted, which means it's bad practice

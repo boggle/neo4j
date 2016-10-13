@@ -287,6 +287,12 @@ public class GraphDatabaseFacade implements GraphDatabaseAPI
     }
 
     @Override
+    public Node unsafeGetNodeById( long id )
+    {
+        return new NodeProxy( nodeActions, id );
+    }
+
+    @Override
     public Relationship getRelationshipById( long id )
     {
         if ( id < 0 )

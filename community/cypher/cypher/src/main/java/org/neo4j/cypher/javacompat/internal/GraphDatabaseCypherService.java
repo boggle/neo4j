@@ -68,6 +68,12 @@ public class GraphDatabaseCypherService implements GraphDatabaseQueryService
     }
 
     @Override
+    public Node unsafeGetNodeById( long id )
+    {
+        return graph.unsafeGetNodeById( id );
+    }
+
+    @Override
     public Relationship getRelationshipById( long id )
     {
         return graph.getRelationshipById( id );

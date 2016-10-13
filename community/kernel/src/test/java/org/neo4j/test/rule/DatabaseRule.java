@@ -187,6 +187,12 @@ public abstract class DatabaseRule extends ExternalResource implements GraphData
     }
 
     @Override
+    public Node unsafeGetNodeById( long id )
+    {
+        return getGraphDatabaseAPI().unsafeGetNodeById( id );
+    }
+
+    @Override
     public IndexManager index()
     {
         return getGraphDatabaseAPI().index();
